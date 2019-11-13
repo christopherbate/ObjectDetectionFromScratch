@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 
+
 class Backbone(torch.nn.Module):
     '''
     A sequence of residual blocks
@@ -14,20 +15,34 @@ class Backbone(torch.nn.Module):
 
     However, the sooner you downsample, the more spatial information you loose.
     '''
+
     def __init__(self, **kwargs):
         super(Backbone, self).__init__(**kwargs)
 
-        self.first_conv = torch.nn.Conv2d(1,16, kernel_size=5)
+        self.first_conv = torch.nn.Conv2d(1, 16, kernel_size=5,
+                                          stride=2, padding=2)
 
-        self.layers = torch.nn.ModuleList([
-            ResBlock(1, 16, kernel_size=(3,3), stride=1,downsample=False)
-        ])        
+        self.res_blks = torch.nn.ModuleList([
+            ResBlock(16, 32, kernel_size=(3, 3), stride=2, downsample=torch.nn.Conv2d(
+                16, 32, kernel_size=3, padding=1, stride=2)),
+            ResBlock(32, 64, kernel_size=(3, 3), stride=2, downsample=torch.nn.Conv2d(
+                32, 64, kernel_size=3, padding=1, stride=2))
+        ])
+
+        self.activation = torch.nn.ReLU()
+        self.bns = torch.nn.ModuleList([
+            torch.nn.BatchNorm2d(16)
+        ])
 
     def forward(self, x):
 
         out = self.first_conv(x)
-
-        return x
+        out = self.bns[0](out)
+        out = self.activation(out)
+        
+        for res_blk in self.res_blks:
+            out = res_blk(out)
+        return out
 
 
 class ResBlock(torch.nn.Module):
@@ -58,27 +73,19 @@ class ResBlock(torch.nn.Module):
         self.downsample = downsample
 
     def forward(self, x):
-        identity = x
-        features = []
+        identity = x        
         out = self.conv1(x)
 
         out = self.bn1(out)
-        out = self.relu(out)
-
-        features.append(out)
+        out = self.relu(out)        
 
         out = self.conv2(out)
         out = self.bn2(out)
 
         if(self.downsample):
             identity = self.downsample(identity)
-
+        
         out = out + identity
-        out = self.relu(out)
+        out = self.relu(out)        
 
-        features.append(out)
-
-        return features
-
-
-
+        return out
