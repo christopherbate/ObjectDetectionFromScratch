@@ -1,0 +1,43 @@
+namespace DLFS;
+
+struct BoundingBox {
+    y1: float;
+    x1: float;
+    y2: float;
+    x2: float;
+}
+
+table Category {
+    name:string;
+    id:ushort(key);
+    examples:[ulong];
+    num_images:ulong;
+    num_anns:ulong;
+}
+
+table Annotation {
+    bbox:BoundingBox;
+    cat_id:ushort;
+    id:ulong(key);
+    image_id:ulong;    
+    area:float;
+}
+
+table Example {
+    file_name:string;
+    id:ulong;    
+    annotations:[Annotation];
+    image:[ubyte];
+    width:ulong;
+    height:ulong;
+    idx:ulong(key);
+}
+
+table Dataset {
+    id:ulong;
+    examples:[Example];
+    categories:[Category];        
+}
+
+
+root_type Dataset;
