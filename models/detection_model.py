@@ -140,7 +140,7 @@ class ObjectDetection(torch.nn.Module):
         }
         data = {
             'pos_predicted_anchors': [anchors[mask] for mask in pos_predicted_mask],
-            'pos_predicted_confidence': [pos_predicted_conf[mask] for mask in pos_labeled_mask],
+            'pos_predicted_confidence': [pos_predicted_conf[idx, mask] for idx, mask in enumerate(pos_predicted_mask)],
             'pos_predicted_labels': pos_predicted_targets,
             'pos_labeled_anchors': [anchors[mask] for mask in pos_labeled_mask],
             'pos_labeled_confidence': probs[pos_labeled_mask],
