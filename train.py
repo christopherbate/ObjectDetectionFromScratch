@@ -1,16 +1,15 @@
 import torch
 import time
 import argparse
+from torch.utils.tensorboard import SummaryWriter
+from utils.image import normalize_tensor
+
+from torchvision.ops import nms
+
 from loaders import FBSDetectionDataset
 from loaders import ObjectDetectionBatch, collate_detection_samples
 from loaders import DetectionTransform
-from models.backbone import Backbone
-import torchvision
-import matplotlib.pyplot as plt
-from torch.utils.tensorboard import SummaryWriter
-from utils.image import normalize_tensor
 from models.detection_model import ObjectDetection
-from torchvision.ops import nms
 
 
 def train_model(args):
