@@ -159,18 +159,53 @@ def train_model(args):
         print("\nBEGINNING VALIDATION STEP {}\n".format(epoch))
         with torch.no_grad():
             for idx, batch in enumerate(validation_loader):
+                '''
+                Push the data to the gpu (if necessary)
+                '''
+                batch['image'] = batch['image'].to(device)
+                batch['labels'] = batch['labels'].to(device)
+                batch['boxes'] = batch['boxes'].to(device)
+                batch['debug'] = True if idx % args.log_interval == 0 else False
+
+                '''
+                Run the model
+                '''
+                losses, model_data = model(batch)
+
                 if idx % args.log_interval == 0:
                     step = (epoch-1)*len(loader)+idx+1
 
-                    print("Step {} Batch {}/{} Loss : {}".format(
-                        step, idx, len(loader), 0
+                    print("Step {} Batch {}/{} Loss : {:.3f}".format(
+                        step, idx, len(loader), losses["class_loss"].item()
                     ))
 
                     writer.add_image_with_boxes("validation_images", normalize_tensor(batch["image"][0]),
                                                 box_tensor=batch["boxes"][0], global_step=step)
+                    writer.add_image_with_boxes("training_images", normalize_tensor(batch["image"][0]),
+                                                box_tensor=batch["boxes"][0], global_step=step)
                     writer.add_scalar(
                         "batch_time", (time.time()-start_time)*1000.0, global_step=step)
+                    writer.add_scalar(
+                        "training_loss", losses['class_loss'].item(),
+                        global_step=step
+                    )
+                    writer.add_image_with_boxes("training_img_predicted_anchors", normalize_tensor(batch["image"])[0],
+                                                model_data["pos_predicted_anchors"][0], global_step=step)
 
+                    '''
+                    Apply nms to predictions.
+                    '''
+                    keep_ind = nms(model_data["pos_predicted_anchors"][0],
+                                   model_data["pos_predicted_confidence"][0], iou_threshold=0.5)
+                    print("Indicies after NMS: ", keep_ind,
+                          model_data["pos_predicted_confidence"][0].shape, model_data["pos_predicted_anchors"][0].shape)
+                    writer.add_image_with_boxes("validation_img_predicted_post_nms", normalize_tensor(batch["image"])[0],
+                                                model_data["pos_predicted_anchors"][0][keep_ind], global_step=step)
+
+                    writer.add_scalar("validation_loss",
+                                      losses["class_loss"].item())
+                    writer.add_scalar(
+                        "batch_time", (time.time()-start_time)*1000.0, global_step=step)
                     writer.close()
 
 
@@ -183,6 +218,7 @@ if __name__ == '__main__':
     parser.add_argument("--log_interval", type=int, default=10)
     parser.add_argument("--device", type=str, default="cpu")
     parser.add_argument("--lr", type=float, default=0.01)
+    parser.add_argument("--metric_interval", type=int, default=10)
 
     args = parser.parse_args()
     print(args)
