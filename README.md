@@ -1,9 +1,14 @@
 # Object Detection From Scratch in PyTorch
-The repo is a minimalistic implementation of a single-stage dense object detection model as pioneered by models 
-such as SSD and RetinaNet. 
+The repo is a minimalistic implementation of a single-stage dense object detection model as pioneered by models such as SSD and RetinaNet. 
+
+The data loader, model, and training scripts are all designed so that someone learning these sorts of systems can run the training on a CPU, even just a laptop, with 8GB of RAM. In particular, it allows you to scale imported images down to a small size (say 128x64), converted to 
+greyscale, and run the model on a subset of COCO classes. 
 
 ### Presentation / Lecture Notes
-Link to to lecture slides / presentation describing the basics of dense object detectors and the organization of this model coming soon.
+I described this class of models in class on 11/13. Link to to lecture slides / presentation describing the basics of dense object detectors and the organization of this model coming soon. 
+
+In the meantime, this [video](https://www.youtube.com/watch?v=nDPWywWRIRo&list=PL3FW7Lu3i5JvHM8ljYj-zLfQRF3EO8sYv&index=12&t=0s) from Stanford's CS231N course is a good 
+introduction. 
 
 # Getting Started
 
