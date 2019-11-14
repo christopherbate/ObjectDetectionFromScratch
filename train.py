@@ -60,6 +60,7 @@ def train_model(args):
     Create the model and transfer weights to device
     '''
     model = ObjectDetection(
+        input_image_shape=args.resize,
         pos_threshold=0.5,
         neg_threshold=0.1,
         class_bias=-1.1,
@@ -216,7 +217,11 @@ if __name__ == '__main__':
     parser.add_argument("--lr", type=float, default=0.01)
     parser.add_argument("--metric_interval", type=int, default=10)
     parser.add_argument('--resize', nargs='+', type=int, default=(64, 128))
-
+    parser.add_argument('--nms_iou', type=float, default=0.5)    
     args = parser.parse_args()
+
+    # Turn the resize parameter into the reverse (WH -> HW)
+    args.resize = args.resize[::-1]
+
     print(args)
     train_model(args)

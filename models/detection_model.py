@@ -10,11 +10,20 @@ import numpy as np
 
 class ObjectDetection(torch.nn.Module):
     '''
-    predict_features is 'detail' or 'course'
-    '''
+        input_image_shape : The size of the input image. 
+                            In our system, this is fixed. For non-fixed systems, it should be 
+                            the average or median size.
+        
+        num_classes : The number of classes that should be predicted
 
-    def __init__(self,
-                 pos_threshold=0.4,
+        predict_conf_threshold : All predictions are filtered by this amount. E.g. if the model 
+                                predicts an object is present by 0.8 confidence, then we keep that 
+                                as a positive prediction which could be passed to NMS. Otherwise,
+                                if confidence is < 0.75, it is is not passed on.
+    '''
+    def __init__(self,    
+                 input_image_shape,             
+                 pos_threshold=0.5,
                  neg_threshold=0.1,
                  activation=torch.nn.functional.relu,
                  class_bias=-2.1,
@@ -26,13 +35,16 @@ class ObjectDetection(torch.nn.Module):
         self.pos_threshold = pos_threshold
         self.neg_threshold = neg_threshold
         self.predict_conf_threshold = predict_conf_threshold
-        self.num_classes = num_classes
+        self.num_classes = num_classes        
 
-        self.IMAGE_SHAPE = (64, 128)
-
-        # These are in order of low pass (gauss-smoothed wavelet) and
-        # and non-smoothed wavelet
+        # The feature counts / depth for each feature map considered
+        # for the class regression head
         self.FEATURE_COUNTS = (64,)
+
+        # Anchor sizes  (per layer)
+        # The anchors sizes need to scale to cover the sizes of possible objects 
+        # in the dataset. 
+        # You can either set an absolute pixel value, or set based off size of image.
         self.ANCHOR_SIZES = ((16,32,64),)
 
         # These ratios are for all anchors
@@ -44,6 +56,7 @@ class ObjectDetection(torch.nn.Module):
         self.box_prediction = BoxPrediction(num_features=self.FEATURE_COUNTS,
                                             num_class=num_classes,
                                             num_anchors=[len(anchors)*len(self.ANCHOR_RATIOS) for anchors in self.ANCHOR_SIZES])
+
         self.loss = torch.nn.BCEWithLogitsLoss(reduce=False)
 
         self.debug = True
