@@ -1,3 +1,5 @@
 runs
 *.pyc
 train.db
+__pycache__
+.vscode
