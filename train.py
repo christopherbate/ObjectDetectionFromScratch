@@ -174,14 +174,14 @@ def train_model(args):
                 losses, model_data = model(batch)
 
                 if idx % args.log_interval == 0:
-                    step = (epoch-1)*len(loader)+idx+1
+                    step = (epoch-1)*len(validation_loader)+idx+1
 
                     print("Validation Step {} Batch {}/{} Loss : {:.3f}".format(
-                        step, idx, len(loader), losses["class_loss"].item()
+                        step, idx, len(validation_loader), losses["class_loss"].item()
                     ))
 
                     writer.add_image_with_boxes("validation_images", normalize_tensor(batch["image"][0]),
-                                                box_tensor=batch["boxes"][0], global_step=step)                  
+                                                box_tensor=batch["boxes"][0], global_step=step)
 
                     writer.add_scalar(
                         "validation_loss", losses['class_loss'].item(),
@@ -199,7 +199,7 @@ def train_model(args):
                     print("Indicies after NMS: ", keep_ind,
                           model_data["pos_predicted_confidence"][0].shape, model_data["pos_predicted_anchors"][0].shape)
                     writer.add_image_with_boxes("validation_img_predicted_post_nms", normalize_tensor(batch["image"])[0],
-                                                model_data["pos_predicted_anchors"][0][keep_ind], global_step=step)                    
+                                                model_data["pos_predicted_anchors"][0][keep_ind], global_step=step)
                     writer.close()
 
 
