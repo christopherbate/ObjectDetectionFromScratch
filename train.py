@@ -80,6 +80,7 @@ def train_model(args):
         Inner training loop
         '''
         print("\n BEGINNING TRAINING STEP EPOCH {}".format(epoch))
+        cummulative_loss = 0.0
         for idx, batch in enumerate(loader):
             '''
             Reset gradient
@@ -98,6 +99,7 @@ def train_model(args):
             Run the model
             '''
             losses, model_data = model(batch)
+            cummulative_loss += losses["class_loss"].item()
 
             '''
             Calc gradient and step optimizer.
@@ -105,45 +107,51 @@ def train_model(args):
             losses['class_loss'].backward()
             optim.step()
 
-            if idx % args.log_interval == 0:
+            '''
+            Log Metrics and Visualizations
+            '''
+            if (idx+1) % args.log_interval == 0:
                 step = (epoch-1)*len(loader)+idx+1
 
-                print("Step {} Batch {}/{} Loss : {}".format(
-                    step, idx, len(loader), 0
+                print("Step {} Batch {}/{} Loss : {:.3f}".format(
+                    step, idx, len(loader), cummulative_loss
                 ))
 
                 '''
-                Option1 : Plot with PYPLOT
-                '''
-                # grid = torchvision.utils.make_grid(
-                #     batch["image"], normalize=True)
-                # plt.imshow(grid.permute(1, 2, 0))
-                # plt.show()
-
-                '''
-                    Option2 : Plot with tensorboard
+                Save visualizations and metrics with tensorboard
+                Note: For research, to reproduce graphs you will want some way to save the collected metrics (e.g. the loss values)
+                to an array for recreating figures for a paper. To do so, metrics are often wrapped in a "metering" class
+                that takes care of logging to tensorboard, resetting cumulative metrics, saving arrays, etc.
                 '''
                 writer.add_image_with_boxes("training_images", normalize_tensor(batch["image"][0]),
                                             box_tensor=batch["boxes"][0], global_step=step)
                 writer.add_scalar(
-                    "batch_time", (time.time()-start_time)*1000.0, global_step=step)
+                    "batch_time", ((time.time()-start_time)/float(args.log_interval))*1000.0, global_step=step)
                 writer.add_scalar(
                     "training_loss", losses['class_loss'].item(),
                     global_step=step
                 )
                 writer.add_image_with_boxes("training_img_predicted_anchors", normalize_tensor(batch["image"])[0],
                                             model_data["pos_predicted_anchors"][0], global_step=step)
+                start_time = time.time()
 
                 '''
                 Apply nms to predictions.
                 '''
                 keep_ind = nms(model_data["pos_predicted_anchors"][0],
                                model_data["pos_predicted_confidence"][0], iou_threshold=0.5)
-                print("Indicies after NMS: ", keep_ind, model_data["pos_predicted_confidence"][0].shape, model_data["pos_predicted_anchors"][0].shape)
+                print("Indicies after NMS: ", keep_ind,
+                      model_data["pos_predicted_confidence"][0].shape, model_data["pos_predicted_anchors"][0].shape)
                 writer.add_image_with_boxes("training_img_predicted_post_nms", normalize_tensor(batch["image"])[0],
                                             model_data["pos_predicted_anchors"][0][keep_ind], global_step=step)
 
                 writer.close()
+
+            '''
+            Reset metric meters as necessary
+            '''
+            if idx % args.metric_interval == 0:
+                cummulative_loss = 0.0
 
         '''
         Inner validation loop
