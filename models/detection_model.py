@@ -1,5 +1,6 @@
 from torchvision.models.detection import rpn
 import torch
+from loaders import ObjectDetectionBatch
 from utils import boxes as boxops
 from models.class_head import BoxPrediction
 from models.backbone import Backbone
@@ -21,12 +22,11 @@ class ObjectDetection(torch.nn.Module):
                                 as a positive prediction which could be passed to NMS. Otherwise,
                                 if confidence is < 0.75, it is is not passed on.
     '''
+
     def __init__(self,    
                  input_image_shape,             
                  pos_threshold=0.5,
                  neg_threshold=0.1,
-                 activation=torch.nn.functional.relu,
-                 class_bias=-2.1,
                  num_classes=80,
                  predict_conf_threshold=0.75,
                  **kwargs):
@@ -36,6 +36,7 @@ class ObjectDetection(torch.nn.Module):
         self.neg_threshold = neg_threshold
         self.predict_conf_threshold = predict_conf_threshold
         self.num_classes = num_classes        
+        self.input_image_shape = input_image_shape
 
         # The feature counts / depth for each feature map considered
         # for the class regression head
@@ -45,10 +46,10 @@ class ObjectDetection(torch.nn.Module):
         # The anchors sizes need to scale to cover the sizes of possible objects 
         # in the dataset. 
         # You can either set an absolute pixel value, or set based off size of image.
-        self.ANCHOR_SIZES = ((16,32,64),)
+        self.ANCHOR_SIZES = ((16, 32, 64),)
 
         # These ratios are for all anchors
-        self.ANCHOR_RATIOS = (1.0,0.5,2.0)
+        self.ANCHOR_RATIOS = (1.0, 0.5, 2.0)
 
         self.backbone = Backbone()
         self.anchor_generator = AnchorGenerator(sizes=self.ANCHOR_SIZES,
@@ -59,22 +60,12 @@ class ObjectDetection(torch.nn.Module):
 
         self.loss = torch.nn.BCEWithLogitsLoss(reduce=False)
 
-        self.debug = True
-
-        self.metrics = np.zeros(3)
-        self.metric_count = 0
-
-    def read_metrics(self):
-        metrics = self.metrics / self.metric_count
-        self.metric_count = 0
-        self.metrics = np.zeros_like(self.metrics)
-        return metrics
-
-    def forward(self, sample):
+    def forward(self, batch: ObjectDetectionBatch):
+        '''
+        '''
         # Apply the backbone.
         # Results in a set of feature maps.
-        img = sample['image']
-        out = self.backbone(img)
+        out = self.backbone(batch.images)
         feature_maps = [out]
 
         # Make predictions
@@ -83,19 +74,18 @@ class ObjectDetection(torch.nn.Module):
         probs = torch.sigmoid(logits.detach())
 
         # Create / retrieve cached anchors
-        anchors = self.anchor_generator(sample['image'], out)
+        anchors = self.anchor_generator(batch.images, out)
 
         fgbg_mask = torch.zeros(
             (logits.shape[0], logits.shape[1]), device=logits.device)
         class_targets = torch.zeros_like(logits)
      
-        for idx, box_set in enumerate(sample["boxes"]):
+        for idx, box_set in enumerate(batch.boxes):
             iou = boxops.anchor_box_iou(anchors, box_set)              
             fgbg_mask[idx], pos_ind, assignments = boxops.create_label_matrix(iou,
                                                                               pos_threshold=self.pos_threshold,
                                                                               neg_threshold=self.neg_threshold)                                                                     
-            class_targets[idx, pos_ind] = sample['labels'][idx, assignments]
-            
+            class_targets[idx, pos_ind] = batch.labels[idx, assignments]
 
         '''
         Calculate focal loss
@@ -121,7 +111,7 @@ class ObjectDetection(torch.nn.Module):
         '''
         in-model debugging
         '''
-        if sample["debug"] == True:
+        if batch.debug == True:
             print("Class Loss: Red {:.2f} Mean {:.2f} Shape: {}".format(
                 class_loss_reduced, class_loss.mean(), class_loss.shape))
             print("Class Loss Pos {:.2f} Neg {:.2f}".format(

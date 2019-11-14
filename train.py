@@ -1,8 +1,7 @@
 import torch
 import time
 import argparse
-from loaders.fbs_loader import FBSDetectionDataset
-from loaders.transforms import DetectionTransform
+from loaders import ObjectDetectionBatch, collate_detection_samples
 from models.backbone import Backbone
 import torchvision
 import matplotlib.pyplot as plt
@@ -42,13 +41,18 @@ def train_model(args):
     Setup the data loader objects (collation, batching)
     '''
     loader = torch.utils.data.DataLoader(
-        collate_fn=FBSDetectionDataset.collate_fn,
-        dataset=datasets[0], batch_size=args.batch_size)
+        collate_fn=collate_detection_samples,
+        dataset=datasets[0],
+        batch_size=args.batch_size,
+        pin_memory=True,
+        num_workers=6)
 
     validation_loader = torch.utils.data.DataLoader(
         dataset=datasets[1],
         batch_size=args.batch_size,
-        collate_fn=FBSDetectionDataset.collate_fn,
+        pin_memory=True,
+        collate_fn=collate_detection_samples,
+        num_workers=6
     )
 
     '''
@@ -84,6 +88,8 @@ def train_model(args):
         '''
         print("\n BEGINNING TRAINING STEP EPOCH {}".format(epoch))
         cummulative_loss = 0.0
+
+        batch: ObjectDetectionBatch
         for idx, batch in enumerate(loader):
             '''
             Reset gradient
@@ -93,10 +99,8 @@ def train_model(args):
             '''
             Push the data to the gpu (if necessary)
             '''
-            batch['image'] = batch['image'].to(device)
-            batch['labels'] = batch['labels'].to(device)
-            batch['boxes'] = batch['boxes'].to(device)
-            batch['debug'] = True if idx % args.log_interval == 0 else False
+            batch.to(device)
+            batch.debug = True if idx % args.log_interval == 0 else False
 
             '''
             Run the model
@@ -120,6 +124,8 @@ def train_model(args):
                     step, idx, len(loader), cummulative_loss
                 ))
 
+                print("Images pinned? ", batch.images.is_pinned())
+                print("Boxes pinned? ", batch.images.is_pinned())
                 '''
                 Save visualizations and metrics with tensorboard
                 Note: For research, to reproduce graphs you will want some way to save the collected metrics (e.g. the loss values)
@@ -136,9 +142,9 @@ def train_model(args):
 
                 training_image_positive_anchors - shows anchors which received a positive label in the labeling step in the model
                 '''
-                sample_image = normalize_tensor(batch["image"][0])
+                sample_image = normalize_tensor(batch.images[0])
                 writer.add_image_with_boxes("training_image", sample_image,
-                                            box_tensor=batch["boxes"][0], global_step=step)
+                                            box_tensor=batch.boxes[0], global_step=step)
                 writer.add_image_with_boxes("training_image_predicted_anchors", sample_image,
                                             model_data["pos_predicted_anchors"][0], global_step=step)
 
@@ -174,14 +180,13 @@ def train_model(args):
         '''
         print("\nBEGINNING VALIDATION STEP {}\n".format(epoch))
         with torch.no_grad():
+            batch: ObjectDetectionBatch
             for idx, batch in enumerate(validation_loader):
                 '''
                 Push the data to the gpu (if necessary)
                 '''
-                batch['image'] = batch['image'].to(device)
-                batch['labels'] = batch['labels'].to(device)
-                batch['boxes'] = batch['boxes'].to(device)
-                batch['debug'] = True if idx % args.log_interval == 0 else False
+                batch.to(device)
+                batch.debug = True if idx % args.log_interval == 0 else False
 
                 '''
                 Run the model
