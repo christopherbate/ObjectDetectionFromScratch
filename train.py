@@ -2,14 +2,13 @@ import torch
 import time
 import argparse
 from torch.utils.tensorboard import SummaryWriter
-from utils.image import normalize_tensor
-
 from torchvision.ops import nms
 
 from loaders import FBSDetectionDataset
 from loaders import ObjectDetectionBatch, collate_detection_samples
 from loaders import DetectionTransform
 from models.detection_model import ObjectDetection
+from utils.image import normalize_tensor
 
 
 def train_model(args):
@@ -202,26 +201,31 @@ def train_model(args):
                             validation_loader), losses["class_loss"].item()
                     ))
 
-                    writer.add_image_with_boxes("validation_images", normalize_tensor(batch["image"][0]),
-                                                box_tensor=batch["boxes"][0], global_step=step)
+                    '''
+                    Log Images
+                    '''
+                    sample_image = normalize_tensor(batch.image[0])
+                    writer.add_image_with_boxes("validation_images", sample_image,
+                                                box_tensor=batch.boxes[0], global_step=step)
 
-                    writer.add_scalar(
-                        "validation_loss", losses['class_loss'].item(),
-                        global_step=step
-                    )
-
-                    writer.add_image_with_boxes("validation_img_predicted_anchors", normalize_tensor(batch["image"])[0],
+                    writer.add_image_with_boxes("validation_img_predicted_anchors", sample_image,
                                                 model_data["pos_predicted_anchors"][0], global_step=step)
 
-                    '''
-                    Apply nms to predictions.
-                    '''
                     keep_ind = nms(model_data["pos_predicted_anchors"][0],
                                    model_data["pos_predicted_confidence"][0], iou_threshold=0.5)
                     print("Indicies after NMS: ", keep_ind,
                           model_data["pos_predicted_confidence"][0].shape, model_data["pos_predicted_anchors"][0].shape)
-                    writer.add_image_with_boxes("validation_img_predicted_post_nms", normalize_tensor(batch["image"])[0],
+
+                    writer.add_image_with_boxes("validation_img_predicted_post_nms", sample_image,
                                                 model_data["pos_predicted_anchors"][0][keep_ind], global_step=step)
+
+                    '''
+                    Log Scalars
+                    '''
+                    writer.add_scalar(
+                        "validation_loss", losses['class_loss'].item(),
+                        global_step=step
+                    )
                     writer.close()
 
 
