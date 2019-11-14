@@ -126,27 +126,40 @@ def train_model(args):
                 to an array for recreating figures for a paper. To do so, metrics are often wrapped in a "metering" class
                 that takes care of logging to tensorboard, resetting cumulative metrics, saving arrays, etc.
                 '''
-                writer.add_image_with_boxes("training_images", normalize_tensor(batch["image"][0]),
+
+                '''
+                training_image - the raw training images with box labels
+
+                training_image_predicted_anchors - predictions for the same image, using basic thresholding (0.7 confidence on the logit)
+                
+                training_image_predicted_post_nms - predictions for the same image, filtered at 0.7 confidence followed by Non-Max-Suppression
+
+                training_image_positive_anchors - shows anchors which received a positive label in the labeling step in the model
+                '''
+                sample_image = normalize_tensor(batch["image"][0])
+                writer.add_image_with_boxes("training_image", sample_image,
                                             box_tensor=batch["boxes"][0], global_step=step)
+                writer.add_image_with_boxes("training_image_predicted_anchors", sample_image,
+                                            model_data["pos_predicted_anchors"][0], global_step=step)
+
+                keep_ind = nms(model_data["pos_predicted_anchors"][0],
+                               model_data["pos_predicted_confidence"][0], iou_threshold=args.nms_iou)
+
+                writer.add_image_with_boxes("training_image_predicted_post_nms", sample_image,
+                                            model_data["pos_predicted_anchors"][0][keep_ind], global_step=step)
+                writer.add_image_with_boxes("training_image_positive_anchors", sample_image,
+                                            box_tensor=model_data["pos_labeled_anchors"][0], global_step=step)
+
+                '''
+                Scalars - batch_time, training loss
+                '''
                 writer.add_scalar(
                     "batch_time", ((time.time()-start_time)/float(args.log_interval))*1000.0, global_step=step)
                 writer.add_scalar(
                     "training_loss", losses['class_loss'].item(),
                     global_step=step
                 )
-                writer.add_image_with_boxes("training_img_predicted_anchors", normalize_tensor(batch["image"])[0],
-                                            model_data["pos_predicted_anchors"][0], global_step=step)
                 start_time = time.time()
-
-                '''
-                Apply nms to predictions.
-                '''
-                keep_ind = nms(model_data["pos_predicted_anchors"][0],
-                               model_data["pos_predicted_confidence"][0], iou_threshold=0.5)
-                print("Indicies after NMS: ", keep_ind,
-                      model_data["pos_predicted_confidence"][0].shape, model_data["pos_predicted_anchors"][0].shape)
-                writer.add_image_with_boxes("training_img_predicted_post_nms", normalize_tensor(batch["image"])[0],
-                                            model_data["pos_predicted_anchors"][0][keep_ind], global_step=step)
 
                 writer.close()
 
