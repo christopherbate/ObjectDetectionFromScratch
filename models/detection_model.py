@@ -1,12 +1,10 @@
-from torchvision.models.detection import rpn
 import torch
+import numpy as np
 from loaders import ObjectDetectionBatch
 from utils import boxes as boxops
 from models.class_head import BoxPrediction
 from models.backbone import Backbone
 from models.anchor_generator import AnchorGenerator
-import time
-import numpy as np
 
 
 class ObjectDetection(torch.nn.Module):
@@ -14,7 +12,7 @@ class ObjectDetection(torch.nn.Module):
         input_image_shape : The size of the input image. 
                             In our system, this is fixed. For non-fixed systems, it should be 
                             the average or median size.
-        
+
         num_classes : The number of classes that should be predicted
 
         predict_conf_threshold : All predictions are filtered by this amount. E.g. if the model 
@@ -23,8 +21,8 @@ class ObjectDetection(torch.nn.Module):
                                 if confidence is < 0.75, it is is not passed on.
     '''
 
-    def __init__(self,    
-                 input_image_shape,             
+    def __init__(self,
+                 input_image_shape,
                  pos_threshold=0.5,
                  neg_threshold=0.1,
                  num_classes=80,
@@ -35,7 +33,7 @@ class ObjectDetection(torch.nn.Module):
         self.pos_threshold = pos_threshold
         self.neg_threshold = neg_threshold
         self.predict_conf_threshold = predict_conf_threshold
-        self.num_classes = num_classes        
+        self.num_classes = num_classes
         self.input_image_shape = input_image_shape
 
         # The feature counts / depth for each feature map considered
@@ -43,8 +41,8 @@ class ObjectDetection(torch.nn.Module):
         self.FEATURE_COUNTS = (64,)
 
         # Anchor sizes  (per layer)
-        # The anchors sizes need to scale to cover the sizes of possible objects 
-        # in the dataset. 
+        # The anchors sizes need to scale to cover the sizes of possible objects
+        # in the dataset.
         # You can either set an absolute pixel value, or set based off size of image.
         self.ANCHOR_SIZES = ((16, 32, 64),)
 
@@ -79,12 +77,12 @@ class ObjectDetection(torch.nn.Module):
         fgbg_mask = torch.zeros(
             (logits.shape[0], logits.shape[1]), device=logits.device)
         class_targets = torch.zeros_like(logits)
-     
+
         for idx, box_set in enumerate(batch.boxes):
-            iou = boxops.anchor_box_iou(anchors, box_set)              
+            iou = boxops.anchor_box_iou(anchors, box_set)
             fgbg_mask[idx], pos_ind, assignments = boxops.create_label_matrix(iou,
                                                                               pos_threshold=self.pos_threshold,
-                                                                              neg_threshold=self.neg_threshold)                                                                     
+                                                                              neg_threshold=self.neg_threshold)
             class_targets[idx, pos_ind] = batch.labels[idx, assignments]
 
         '''

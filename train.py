@@ -1,7 +1,9 @@
 import torch
 import time
 import argparse
+from loaders import FBSDetectionDataset
 from loaders import ObjectDetectionBatch, collate_detection_samples
+from loaders import DetectionTransform
 from models.backbone import Backbone
 import torchvision
 import matplotlib.pyplot as plt
@@ -67,7 +69,6 @@ def train_model(args):
         input_image_shape=args.resize,
         pos_threshold=0.5,
         neg_threshold=0.1,
-        class_bias=-1.1,
         num_classes=80,
         predict_conf_threshold=0.5
     ).to(device)
@@ -126,6 +127,7 @@ def train_model(args):
 
                 print("Images pinned? ", batch.images.is_pinned())
                 print("Boxes pinned? ", batch.images.is_pinned())
+
                 '''
                 Save visualizations and metrics with tensorboard
                 Note: For research, to reproduce graphs you will want some way to save the collected metrics (e.g. the loss values)
@@ -235,7 +237,7 @@ if __name__ == '__main__':
     parser.add_argument("--lr", type=float, default=0.01)
     parser.add_argument("--metric_interval", type=int, default=10)
     parser.add_argument('--resize', nargs='+', type=int, default=(64, 128))
-    parser.add_argument('--nms_iou', type=float, default=0.5)    
+    parser.add_argument('--nms_iou', type=float, default=0.5)
     args = parser.parse_args()
 
     # Turn the resize parameter into the reverse (WH -> HW)
