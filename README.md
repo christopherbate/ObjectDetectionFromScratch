@@ -49,11 +49,26 @@ For GPU:
 train.py --db ./train.db --images /home/[user]/datasets/coco/train2017 --device cuda
 ```
 
+See the `train.py` main function (at the bottom) for a list of possible arguments. For example, to train on GPU with the image resized to 256x128x1 at batch size 32, use the following:
 
-Currently, on GPU, it takes about 1GB of GPU space when images are resampled to `128x64x1` (WxH, greyscale).
+```
+python train.py --db /home/chris/datasets/coco/train.db --images /home/chris/datasets/coco/train2017 --device cuda --resize 128 256 --epochs 10 --batch_size 32
+```
+
+Note that to change the training image size, the input format should be **--resize WIDTH HEIGHT**
+
+
+Currently, on GPU, it takes about 1GB of GPU space when images are resampled to `128x64x1` (WxH, greyscale), and batch size 
+is 16. So, You can scale to very large batch sizes with the right GPU.
 
 To visualize  training progress and see images, run Tensorboard from your code diretory:
 
 ```
 tensorboard --logdir=./runs
 ```
+
+
+## About the Visualizations 
+
+When developing a **dense object detection** model like this, the **ClassHead** is a CNN which predicts 
+whether or not an object is at each position in the final feature map of the **backbone**.
