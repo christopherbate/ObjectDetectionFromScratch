@@ -180,16 +180,14 @@ def train_model(args):
                     ))
 
                     writer.add_image_with_boxes("validation_images", normalize_tensor(batch["image"][0]),
-                                                box_tensor=batch["boxes"][0], global_step=step)
-                    writer.add_image_with_boxes("training_images", normalize_tensor(batch["image"][0]),
-                                                box_tensor=batch["boxes"][0], global_step=step)
+                                                box_tensor=batch["boxes"][0], global_step=step)                  
+
                     writer.add_scalar(
-                        "batch_time", (time.time()-start_time)*1000.0, global_step=step)
-                    writer.add_scalar(
-                        "training_loss", losses['class_loss'].item(),
+                        "validation_loss", losses['class_loss'].item(),
                         global_step=step
                     )
-                    writer.add_image_with_boxes("training_img_predicted_anchors", normalize_tensor(batch["image"])[0],
+
+                    writer.add_image_with_boxes("validation_img_predicted_anchors", normalize_tensor(batch["image"])[0],
                                                 model_data["pos_predicted_anchors"][0], global_step=step)
 
                     '''
@@ -200,12 +198,7 @@ def train_model(args):
                     print("Indicies after NMS: ", keep_ind,
                           model_data["pos_predicted_confidence"][0].shape, model_data["pos_predicted_anchors"][0].shape)
                     writer.add_image_with_boxes("validation_img_predicted_post_nms", normalize_tensor(batch["image"])[0],
-                                                model_data["pos_predicted_anchors"][0][keep_ind], global_step=step)
-
-                    writer.add_scalar("validation_loss",
-                                      losses["class_loss"].item())
-                    writer.add_scalar(
-                        "batch_time", (time.time()-start_time)*1000.0, global_step=step)
+                                                model_data["pos_predicted_anchors"][0][keep_ind], global_step=step)                    
                     writer.close()
 
 
