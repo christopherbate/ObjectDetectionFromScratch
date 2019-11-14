@@ -5,6 +5,7 @@ from PIL import Image
 import math
 import random
 import matplotlib.pyplot as plt
+import utils.boxes
 
 
 class RandomResizeCropSample(object):
@@ -79,7 +80,7 @@ class RandomResizeCropSample(object):
         height_ratio = self.size[0] / h
 
         # Adjust all the boxes.
-        new_sample["boxes"], inds = adjust_boxes(
+        new_sample["boxes"], inds = utils.boxes.adjust_boxes(
             new_sample["boxes"],
             (j, i, j+w, i+h),
             width_ratio, height_ratio)
@@ -91,8 +92,12 @@ class RandomResizeCropSample(object):
 
 
 class DetectionTransform(object):
-    def __init__(self, greyscale=False, normalize=False):
-        self.output_size = (64, 128)
+    '''
+    output_size : (h,w) tuple of the size the image should be resized to
+    '''
+
+    def __init__(self, output_size, greyscale=False, normalize=False):
+        self.output_size = output_size
         self.resize_crop = RandomResizeCropSample(self.output_size)
         self.normalize = None
         if(normalize):
@@ -108,67 +113,3 @@ class DetectionTransform(object):
             sample["image"] = self.normalize(sample["image"])
 
         return sample
-
-
-def adjust_boxes(boxes, crop_coords,
-                 scale_x=1.0, scale_y=1.0):
-    '''
-    Adjusts boxes after crop+rescale of image
-
-    crop_coords: [x1, y1, x2, y2]
-
-    returns new boxes and indices of boxes retained
-    '''
-    intersections = intersection(boxes,
-                                 torch.tensor(crop_coords))
-    width = crop_coords[2] - crop_coords[0]
-    height = crop_coords[3] - crop_coords[1]
-    boxes[:, 0] = boxes[:, 0] - crop_coords[0]
-    boxes[:, 1] = boxes[:, 1] - crop_coords[1]
-    boxes[:, 2] = boxes[:, 2] - crop_coords[0]
-    boxes[:, 3] = boxes[:, 3] - crop_coords[1]
-
-    boxes[:, 0] = torch.clamp(boxes[:, 0],
-                              min=0.0, max=width)*scale_x
-    boxes[:, 2] = torch.clamp(boxes[:, 2],
-                              min=0.0, max=width)*scale_x
-    boxes[:, 1] = torch.clamp(boxes[:, 1],
-                              min=0.0, max=height)*scale_y
-    boxes[:, 3] = torch.clamp(boxes[:, 3],
-                              min=0.0, max=height)*scale_y
-
-    boxes, inds = eliminate_zero_area(boxes)
-
-    return boxes, inds
-
-
-def intersection(box1, box2):
-    '''
-    box1 Nx4
-    box2 1x4
-    '''
-    ones = torch.ones(box1.shape[0], dtype=box1.dtype)
-    xr_min = torch.min(box1[:, 2], ones*box2[2])
-    xl_max = torch.max(box1[:, 0], ones*box2[0])
-
-    yt_max = torch.max(box1[:, 1], ones*box2[1])
-    yb_min = torch.min(box1[:, 3], ones*box2[3])
-
-    x_area = xr_min - xl_max
-    y_area = yb_min - yt_max
-
-    x1 = torch.max(x_area, torch.zeros_like(x_area))
-    y1 = torch.max(y_area, torch.zeros_like(y_area))
-
-    return x1*y1
-
-
-def eliminate_zero_area(boxes):
-    ind = area(boxes) > 0.0
-
-    boxes = boxes[ind, :]
-
-    return boxes, ind
-
-def area(boxes):
-    return (boxes[:, 2] - boxes[:, 0])*(boxes[:, 3] - boxes[:, 1])

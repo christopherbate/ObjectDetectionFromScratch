@@ -15,7 +15,8 @@ from torchvision.ops import nms
 def train_model(args):
     writer = SummaryWriter()
 
-    transforms = DetectionTransform(greyscale=True, normalize=True)
+    transforms = DetectionTransform(output_size=(
+        128, 256), greyscale=True, normalize=True)
     dataset = FBSDetectionDataset(
         database_path=args.db,
         data_path=args.images,
