@@ -15,8 +15,9 @@ from torchvision.ops import nms
 def train_model(args):
     writer = SummaryWriter()
 
-    transforms = DetectionTransform(output_size=(
-        128, 256), greyscale=True, normalize=True)
+    transforms = DetectionTransform(output_size=args.resize,
+                                    greyscale=True, normalize=True)
+
     dataset = FBSDetectionDataset(
         database_path=args.db,
         data_path=args.images,
@@ -177,7 +178,8 @@ def train_model(args):
                     step = (epoch-1)*len(validation_loader)+idx+1
 
                     print("Validation Step {} Batch {}/{} Loss : {:.3f}".format(
-                        step, idx, len(validation_loader), losses["class_loss"].item()
+                        step, idx, len(
+                            validation_loader), losses["class_loss"].item()
                     ))
 
                     writer.add_image_with_boxes("validation_images", normalize_tensor(batch["image"][0]),
@@ -213,6 +215,7 @@ if __name__ == '__main__':
     parser.add_argument("--device", type=str, default="cpu")
     parser.add_argument("--lr", type=float, default=0.01)
     parser.add_argument("--metric_interval", type=int, default=10)
+    parser.add_argument('--resize', nargs='+', type=int, default=(64, 128))
 
     args = parser.parse_args()
     print(args)
