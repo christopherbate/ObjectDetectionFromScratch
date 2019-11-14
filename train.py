@@ -113,7 +113,7 @@ def train_model(args):
             if (idx+1) % args.log_interval == 0:
                 step = (epoch-1)*len(loader)+idx+1
 
-                print("Step {} Batch {}/{} Loss : {:.3f}".format(
+                print("Training Step {} Batch {}/{} Loss : {:.3f}".format(
                     step, idx, len(loader), cummulative_loss
                 ))
 
@@ -175,7 +175,7 @@ def train_model(args):
                 if idx % args.log_interval == 0:
                     step = (epoch-1)*len(loader)+idx+1
 
-                    print("Step {} Batch {}/{} Loss : {:.3f}".format(
+                    print("Validation Step {} Batch {}/{} Loss : {:.3f}".format(
                         step, idx, len(loader), losses["class_loss"].item()
                     ))
 
