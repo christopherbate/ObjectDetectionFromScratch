@@ -130,20 +130,25 @@ def create_label_matrix(iou, pos_threshold=0.5, neg_threshold=0.1):
     # Find the best ind for each true object
     # Artificially inflate IoU so we get at least one match
     # per box.
-    # vals, best_ind = iou.max(dim=0)
-    # col_ind = torch.arange(best_ind.shape[0])
-    # iou[best_ind, col_ind] = 1.0
-    inds = torch.sum(iou >= pos_threshold, dim=1, dtype=torch.bool)
-    neg_inds = torch.prod(iou < neg_threshold, dim=1,
+
+    # This gets the index of the best anchor for each box
+    _, best_ind = iou.max(dim=0)
+    col_ind = torch.arange(best_ind.shape[0])
+
+    # Make sure that one anchor is made positive
+    iou[best_ind, col_ind] = 1.0
+
+    pos_mask = torch.sum(iou >= pos_threshold, dim=1, dtype=torch.bool)
+    neg_mask = torch.prod(iou < neg_threshold, dim=1,
                           dtype=torch.int8).to(torch.bool)
 
     fgbg_mask = torch.zeros(iou.shape[0], dtype=torch.int)
-    fgbg_mask[inds] = 1
-    fgbg_mask[neg_inds] = -1
+    fgbg_mask[pos_mask] = 1
+    fgbg_mask[neg_mask] = -1
     fgbg_mask.requires_grad = False
 
     _, class_assignments = torch.max(iou, dim=1)
-    class_assignments = class_assignments[inds]
+    class_assignments = class_assignments[pos_mask]
     class_assignments.requires_grad = False
 
-    return fgbg_mask, inds, class_assignments
+    return fgbg_mask, pos_mask, class_assignments
