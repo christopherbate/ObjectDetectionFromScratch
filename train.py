@@ -204,7 +204,7 @@ def train_model(args):
                     '''
                     Log Images
                     '''
-                    sample_image = normalize_tensor(batch.image[0])
+                    sample_image = normalize_tensor(batch.images[0])
                     writer.add_image_with_boxes("validation_images", sample_image,
                                                 box_tensor=batch.boxes[0], global_step=step)
 
