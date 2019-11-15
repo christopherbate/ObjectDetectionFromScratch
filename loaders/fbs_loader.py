@@ -1,19 +1,13 @@
-import flatbuffers
+import os
+import torch
+from PIL import Image
+import numpy as np
+
 from loaders.dataset_fbs import Annotation
 from loaders.dataset_fbs import Dataset
 from loaders.dataset_fbs import Example
 from loaders.dataset_fbs import Category
 from loaders.dataset_fbs import BoundingBox
-
-import numpy as np
-import os
-import time
-
-import torch
-
-from PIL import Image
-
-import matplotlib.pyplot as plt
 
 
 class FBSDetectionDataset(torch.utils.data.Dataset):
@@ -80,8 +74,8 @@ class FBSDetectionDataset(torch.utils.data.Dataset):
                             self.examples.append(example)
                             break
 
-            print("Based on filters, selected {} images".format(
-                len(self.examples)))
+        print("Based on filters, selected {} images".format(
+            len(self.examples)))
         print("Filtered Dataset has {} categories".format(len(self.categories)))
 
         self.one_hot_matrix = np.eye(len(self.categories), dtype=np.float32)
@@ -91,39 +85,6 @@ class FBSDetectionDataset(torch.utils.data.Dataset):
         for label_id, cat in self.categories.items():
             print("{} : {} : {} : {}".format(
                 label_id, cat["remap_id"], cat["name"], cat["num_images"]))
-
-    @staticmethod
-    def collate_fn(example_list):
-        assert(type(example_list) == list)
-
-        # widths = [ex["image"].shape[-1] for ex in example_list]
-        # heights = [ex["image"].shape[-2] for ex in example_list]
-        imgs = [ex["image"] for ex in example_list]
-        boxes = [ex["boxes"] for ex in example_list]
-        labels = [ex["labels"] for ex in example_list]
-
-        out = None
-        if(torch.utils.data.get_worker_info() is not None):
-            # This is from pytorch's default colate fn:
-            # https://github.com/pytorch/pytorch/blob/master/torch/utils/data/_utils/collate.py
-            # If we're in a background process, concatenate directly into a
-            # shared memory tensor to avoid an extra copy
-            numel_img = sum([x.numel() for x in imgs])
-            storage = imgs[0].storage()._new_shared(numel_img)
-            out = imgs[0].new(storage)
-
-        # Boxes and labels use zero padding out to max length.
-        # We use a util function used for RNNs, but the purpose/effect is the same.
-        boxes = torch.nn.utils.rnn.pad_sequence(boxes, batch_first=True)
-        labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True)
-        imgs = torch.stack(imgs, dim=0, out=out)
-
-        batched_sample = {
-            "image": imgs,
-            "boxes": boxes,
-            "labels": labels,
-        }
-        return batched_sample
 
     def __getitem__(self, idx):
         example = self.examples[idx]
