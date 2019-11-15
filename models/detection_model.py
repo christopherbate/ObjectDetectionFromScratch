@@ -23,9 +23,9 @@ class ObjectDetection(torch.nn.Module):
 
     def __init__(self,
                  input_image_shape,
+                 num_classes,
                  pos_threshold=0.5,
                  neg_threshold=0.1,
-                 num_classes=80,
                  predict_conf_threshold=0.75,
                  **kwargs):
 
@@ -56,8 +56,10 @@ class ObjectDetection(torch.nn.Module):
         self.backbone = Backbone()
         self.anchor_generator = AnchorGenerator(sizes=self.ANCHOR_SIZES,
                                                 aspect_ratios=self.ANCHOR_RATIOS)
+
         self.box_prediction = BoxPrediction(num_features=self.FEATURE_COUNTS,
                                             num_class=num_classes,
+                                            batch_norm=True,
                                             num_anchors=[len(anchors)*len(self.ANCHOR_RATIOS) for anchors in self.ANCHOR_SIZES])
 
         self.loss = torch.nn.BCEWithLogitsLoss(reduce=False)
@@ -85,6 +87,8 @@ class ObjectDetection(torch.nn.Module):
         positive_anchor_indices = []
         positive_anchor_class_assignments = []
         positive_anchor_confidences = []
+
+        with torch.no_grad():
         for idx, box_set in enumerate(batch.boxes):
             iou = boxops.anchor_box_iou(anchors, box_set)
             fgbg_mask[idx], pos_ind, assignments = boxops.create_label_matrix(iou,
@@ -93,8 +97,9 @@ class ObjectDetection(torch.nn.Module):
             positive_anchor_indices.append(pos_ind)
             positive_anchor_class_assignments.append(assignments)
             class_targets[idx, pos_ind] = batch.labels[idx, assignments]
+                labels_idx = batch.labels_idx[idx, assignments]
             positive_anchor_confidences.append(
-                probs[idx, pos_ind, assignments])
+                    probs[idx, pos_ind, labels_idx])
 
         '''
         Calculate focal loss
@@ -121,6 +126,7 @@ class ObjectDetection(torch.nn.Module):
         in-model debugging
         '''
         if batch.debug == True:
+            with torch.no_grad():
             print("Class Loss: Red {:.4f} Mean {:.4f} Shape: {}".format(
                 class_loss_reduced, class_loss.mean(), class_loss.shape))
             print("Class Loss Pos {:.4f} Neg {:.4f}".format(

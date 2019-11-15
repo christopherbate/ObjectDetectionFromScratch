@@ -27,6 +27,7 @@ def train_model(args):
         },
         area_filter=[100**2, 500**2]
     )
+    dataset.print_categories()
 
     ''' 
     Split dataset into train and validation
@@ -67,7 +68,7 @@ def train_model(args):
         input_image_shape=args.resize,
         pos_threshold=args.pos_anchor_iou,
         neg_threshold=args.neg_anchor_iou,
-        num_classes=80,
+        num_classes=len(dataset.categories),
         predict_conf_threshold=0.5
     ).to(device)
 

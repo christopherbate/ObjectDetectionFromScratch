@@ -65,6 +65,7 @@ class RandomResizeCropSample(object):
 
         new_sample['boxes'] = torch.from_numpy(sample['boxes'])
         new_sample['labels'] = torch.from_numpy(sample['labels'])
+        new_sample['labels_idx'] = sample['labels_idx']
 
         # i, j, h, w = self.get_params(sample['image'], self.scale, self.ratio)
         i, j, h, w = 0, 0, sample['image'].height, sample['image'].width

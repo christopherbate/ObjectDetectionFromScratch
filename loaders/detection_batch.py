@@ -16,6 +16,7 @@ class ObjectDetectionBatch:
         imgs = [ex["image"] for ex in example_list]
         boxes = [ex["boxes"] for ex in example_list]
         labels = [ex["labels"] for ex in example_list]
+        labels_idx = [ex["labels_idx"] for ex in example_list]
 
         out = None
         if(torch.utils.data.get_worker_info() is not None):
@@ -31,7 +32,13 @@ class ObjectDetectionBatch:
         # We use a util function used for RNNs, but the purpose/effect is the same.
         self.boxes = torch.nn.utils.rnn.pad_sequence(boxes, batch_first=True)
         self.labels = torch.nn.utils.rnn.pad_sequence(labels, batch_first=True)
+        self.labels_idx = torch.nn.utils.rnn.pad_sequence(
+            labels_idx, batch_first=True)
         self.images = torch.stack(imgs, dim=0, out=out)
+
+        assert(self.boxes.shape[0] ==
+               self.images.shape[0] == self.labels.shape[0])
+
         self.debug = False
 
     def pin_memory(self):
@@ -42,6 +49,7 @@ class ObjectDetectionBatch:
         self.boxes = self.boxes.pin_memory()
         self.labels = self.labels.pin_memory()
         self.images = self.images.pin_memory()
+        self.labels_idx = self.labels_idx.pin_memory()
         return self
 
     def to(self, device):
@@ -51,6 +59,7 @@ class ObjectDetectionBatch:
         self.boxes = self.boxes.to(device)
         self.labels = self.labels.to(device)
         self.images = self.images.to(device)
+        self.labels_idx = self.labels_idx.to(device)
 
 
 def collate_detection_samples(example_list):    

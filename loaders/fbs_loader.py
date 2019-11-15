@@ -21,7 +21,7 @@ class FBSDetectionDataset(torch.utils.data.Dataset):
                  data_path="/home/chris/datasets/coco/train2017/",
                  greyscale=False,
                  transforms=None,
-                 categories_filter: dict = None,
+                 categories_filter: list = None,
                  area_filter=[0, 800**2]):
         super(FBSDetectionDataset, self).__init__()
         self.database_path = database_path
@@ -38,14 +38,22 @@ class FBSDetectionDataset(torch.utils.data.Dataset):
         self.examples = []
 
         # Create the categories map
+        unique_idx = 0
         for i in range(self.dataset.CategoriesLength()):
             cat = self.dataset.Categories(i)
+
+            if self.category_filter is not None:
+                self.category_filter: dict
+                if cat.Name().decode('utf-8') not in self.category_filter:
+                    continue
+
             self.categories[cat.Id()] = {
                 "name": cat.Name().decode('utf-8'),
-                "remap_id": i,
+                "remap_id": unique_idx,
                 "num_images": cat.NumImages(),
                 "example_list": cat.ExamplesAsNumpy(),
             }
+            unique_idx += 1
 
         if(categories_filter is None):
             for i in range(self.dataset.ExamplesLength()):
@@ -68,16 +76,15 @@ class FBSDetectionDataset(torch.utils.data.Dataset):
                 for j in range(example.AnnotationsLength()):
                     if(example.Annotations(j).Area() > self.area_limits[0]
                             and example.Annotations(j).Area() < self.area_limits[1]):
-                        if(self.categories[example.Annotations(j).CatId()]["name"]
-                                in self.category_filter):
+                        if example.Annotations(j).CatId() in self.categories:
                             self.examples.append(example)
                             break
 
             print("Based on filters, selected {} images".format(
                 len(self.examples)))
+        print("Filtered Dataset has {} categories".format(len(self.categories)))
 
-        self.one_hot_matrix = np.eye(80, dtype=np.float32)
-        self.total_cats = len(self.categories.keys())
+        self.one_hot_matrix = np.eye(len(self.categories), dtype=np.float32)
 
     def print_categories(self):
         print("Categories: (total: {})".format(len(self.categories.keys())))
@@ -136,12 +143,8 @@ class FBSDetectionDataset(torch.utils.data.Dataset):
         for i in range(example.AnnotationsLength()):
             ann = example.Annotations(i)
             box = ann.Bbox()
-            category = self.categories[ann.CatId()]
-            if(self.category_filter is not None):
-                if(category["name"] in self.category_filter):
-                    boxes.append([box.X1(), box.Y1(), box.X2(), box.Y2()])
-                    labels.append(self.categories[ann.CatId()]["remap_id"])
-            else:
+
+            if(ann.CatId() in self.categories):
                 boxes.append([box.X1(), box.Y1(), box.X2(), box.Y2()])
                 labels.append(self.categories[ann.CatId()]["remap_id"])
 
@@ -149,13 +152,13 @@ class FBSDetectionDataset(torch.utils.data.Dataset):
             'image': img,
             'boxes': np.array(boxes),
             'labels': self.one_hot_matrix[labels],
+            'labels_idx': torch.tensor(labels, dtype=torch.long),
             'width': width,
             'height': height
         }
 
         if(self.transforms):
             sample = self.transforms(sample)
-
         return sample
 
     def __len__(self):
