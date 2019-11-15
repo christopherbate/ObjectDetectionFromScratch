@@ -76,7 +76,8 @@ def train_model(args):
     '''
     optim = torch.optim.SGD(params=model.parameters(),
                             lr=args.lr, momentum=0.5)
-
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(
+        optimizer=optim, step_size=2, gamma=0.1, last_epoch=-1)
     '''
     Outer training loop
     '''
@@ -230,6 +231,9 @@ def train_model(args):
                         global_step=step
                     )
                     writer.close()
+
+        lr_scheduler.step()
+        print("Stepped learning rate. Rate is now: ", lr_scheduler.get_lr())
 
 
 if __name__ == '__main__':
