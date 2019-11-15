@@ -45,14 +45,14 @@ def train_model(args):
         dataset=datasets[0],
         batch_size=args.batch_size,
         pin_memory=True,
-        num_workers=6)
+        num_workers=args.num_data_workers)
 
     validation_loader = torch.utils.data.DataLoader(
         dataset=datasets[1],
         batch_size=args.batch_size,
         pin_memory=True,
         collate_fn=collate_detection_samples,
-        num_workers=6
+        num_workers=args.num_data_workers
     )
 
     '''
@@ -122,9 +122,6 @@ def train_model(args):
                 print("Training Step {} Batch {}/{} Loss : {:.3f}".format(
                     step, idx, len(loader), cummulative_loss
                 ))
-
-                print("Images pinned? ", batch.images.is_pinned())
-                print("Boxes pinned? ", batch.images.is_pinned())
 
                 '''
                 Save visualizations and metrics with tensorboard
@@ -241,6 +238,8 @@ if __name__ == '__main__':
     parser.add_argument("--metric_interval", type=int, default=10)
     parser.add_argument('--resize', nargs='+', type=int, default=(64, 128))
     parser.add_argument('--nms_iou', type=float, default=0.5)
+    parser.add_argument('--num_data_workers', type=int,
+                        default=torch.get_num_threads())
     args = parser.parse_args()
 
     # Turn the resize parameter into the reverse (WH -> HW)
