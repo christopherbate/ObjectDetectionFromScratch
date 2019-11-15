@@ -65,8 +65,8 @@ def train_model(args):
     '''
     model = ObjectDetection(
         input_image_shape=args.resize,
-        pos_threshold=0.5,
-        neg_threshold=0.1,
+        pos_threshold=args.pos_anchor_iou,
+        neg_threshold=args.neg_anchor_iou,
         num_classes=80,
         predict_conf_threshold=0.5
     ).to(device)
@@ -237,6 +237,8 @@ if __name__ == '__main__':
     parser.add_argument("--lr", type=float, default=0.01)
     parser.add_argument("--metric_interval", type=int, default=10)
     parser.add_argument('--resize', nargs='+', type=int, default=(64, 128))
+    parser.add_argument('--neg_anchor_iou', type=float, default=0.4)
+    parser.add_argument('--pos_anchor_iou', type=float, default=0.5)
     parser.add_argument('--nms_iou', type=float, default=0.5)
     parser.add_argument('--num_data_workers', type=int,
                         default=torch.get_num_threads())
