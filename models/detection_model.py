@@ -73,9 +73,8 @@ class ObjectDetection(torch.nn.Module):
         feature_maps = [out]
 
         # Make predictions
-        box_data = self.box_prediction(feature_maps)
-        logits = box_data['logits']
-        probs = torch.sigmoid(logits.detach())
+        logits = self.box_prediction(feature_maps)
+        probs = torch.sigmoid(logits.detach())        
 
         # Create / retrieve cached anchors
         anchors = self.anchor_generator(batch.images, out)
@@ -89,16 +88,16 @@ class ObjectDetection(torch.nn.Module):
         positive_anchor_confidences = []
 
         with torch.no_grad():
-        for idx, box_set in enumerate(batch.boxes):
-            iou = boxops.anchor_box_iou(anchors, box_set)
-            fgbg_mask[idx], pos_ind, assignments = boxops.create_label_matrix(iou,
-                                                                              pos_threshold=self.pos_threshold,
-                                                                              neg_threshold=self.neg_threshold)
-            positive_anchor_indices.append(pos_ind)
-            positive_anchor_class_assignments.append(assignments)
-            class_targets[idx, pos_ind] = batch.labels[idx, assignments]
+            for idx, box_set in enumerate(batch.boxes):
+                iou = boxops.anchor_box_iou(anchors, box_set)            
+                fgbg_mask[idx], pos_ind, assignments = boxops.create_label_matrix(iou,
+                                                                                pos_threshold=self.pos_threshold,
+                                                                                neg_threshold=self.neg_threshold)                    
+                positive_anchor_indices.append(pos_ind)
+                positive_anchor_class_assignments.append(assignments)
+                class_targets[idx, pos_ind] = batch.labels[idx, assignments]
                 labels_idx = batch.labels_idx[idx, assignments]
-            positive_anchor_confidences.append(
+                positive_anchor_confidences.append(
                     probs[idx, pos_ind, labels_idx])
 
         '''
@@ -127,39 +126,39 @@ class ObjectDetection(torch.nn.Module):
         '''
         if batch.debug == True:
             with torch.no_grad():
-            print("Class Loss: Red {:.4f} Mean {:.4f} Shape: {}".format(
-                class_loss_reduced, class_loss.mean(), class_loss.shape))
-            print("Class Loss Pos {:.4f} Neg {:.4f}".format(
-                class_loss[pos_labeled_mask].mean(
-                ), class_loss[neg_labeled_mask].mean()
-            ))
+                print("Class Loss: Red {:.4f} Mean {:.4f} Shape: {}".format(
+                    class_loss_reduced, class_loss.mean(), class_loss.shape))
+                print("Class Loss Pos {:.4f} Neg {:.4f}".format(
+                    class_loss[pos_labeled_mask].mean(
+                    ), class_loss[neg_labeled_mask].mean()
+                ))
 
-            print("Mask shape: {}".format(fgbg_mask.shape))
-            print("Class Probabilities {}".format(probs.shape))
-            print("Class Target Shape: {}".format(class_targets.shape))
+                print("Mask shape: {}".format(fgbg_mask.shape))
+                print("Class Probabilities {}".format(probs.shape))
+                print("Class Target Shape: {}".format(class_targets.shape))
 
-            # Uncomment to check that all positive anchors are receiving a target of "1.0"
-            # print("Pos Target Check: {:.2f}".format(
-            # class_targets[pos_labeled_mask, ...].sum(dim=-1).mean()))
+                # Uncomment to check that all positive anchors are receiving a target of "1.0"
+                # print("Pos Target Check: {:.2f}".format(
+                # class_targets[pos_labeled_mask, ...].sum(dim=-1).mean()))
 
-            # Prints the number of positive, neural, and negatively labeled anchors.
-            print("Pos Anchors {} Neg Anchors {} Neutral Anchors {}".format(
-                torch.sum(fgbg_mask == 1), torch.sum(fgbg_mask == -1),
-                torch.sum(fgbg_mask == 0)
-            ))
+                # Prints the number of positive, neural, and negatively labeled anchors.
+                print("Pos Anchors {} Neg Anchors {} Neutral Anchors {}".format(
+                    torch.sum(fgbg_mask == 1), torch.sum(fgbg_mask == -1),
+                    torch.sum(fgbg_mask == 0)
+                ))
 
-            # Prints focal loss means
-            print("Focal Weights Shape {} Pos Mean {:.3f} Neg Mean {:.3f}".format(focal_weights.shape,
-                                                                                  focal_weights[pos_labeled_mask].mean(
-                                                                                  ),
-                                                                                  focal_weights[neg_labeled_mask].mean()))
+                # Prints focal loss means
+                print("Focal Weights Shape {} Pos Mean {:.3f} Neg Mean {:.3f}".format(focal_weights.shape,
+                                                                                    focal_weights[pos_labeled_mask].mean(
+                                                                                    ),
+                                                                                    focal_weights[neg_labeled_mask].mean()))
 
-            # Uncomment to check that all ground truth boxes receive some anchor
-            # assignment (no NaN values in the printed tensor), and to monitor
-            # avg confidence. (This is plotted in Tensorboard so should probably be kept commented here)
-            # print("Avg PosAnchor Confidence {}".format(
-            #     torch.tensor([c.mean() for c in positive_anchor_confidences])))
-            print("\n")
+                # Uncomment to check that all ground truth boxes receive some anchor
+                # assignment (no NaN values in the printed tensor), and to monitor
+                # avg confidence. (This is plotted in Tensorboard so should probably be kept commented here)
+                # print("Avg PosAnchor Confidence {}".format(
+                #     torch.tensor([c.mean() for c in positive_anchor_confidences])))
+                print("\n")
 
         losses = {
             'class_loss': class_loss_reduced

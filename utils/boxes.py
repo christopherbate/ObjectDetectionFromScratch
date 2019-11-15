@@ -109,7 +109,7 @@ def create_anchors(feature_shape: tuple,
 def anchor_box_iou(anchors, boxes):
     '''
 
-    Anchors: M x 4 tensor 
+    Anchors: M x 4 tensors
     Boxes: B x 4 tensor
 
     Output: M x B tensor of IoU values
@@ -117,7 +117,6 @@ def anchor_box_iou(anchors, boxes):
     '''
     iou = torchvision.ops.box_iou(anchors, boxes)
     iou.requires_grad = False
-
     return iou
 
 
@@ -132,11 +131,12 @@ def create_label_matrix(iou, pos_threshold=0.5, neg_threshold=0.1):
     # per box.
 
     # This gets the index of the best anchor for each box
-    _, best_ind = iou.max(dim=0)
+    vals, best_ind = iou.max(dim=0)
     col_ind = torch.arange(best_ind.shape[0])
 
-    # Make sure that one anchor is made positive
-    iou[best_ind, col_ind] = 1.0
+    # Make sure that one anchor is made positive, if
+    # we have a non-zero box (boxes are padded in the beginning during batching)
+    iou[best_ind, col_ind] *= 10.0
 
     pos_mask = torch.sum(iou >= pos_threshold, dim=1, dtype=torch.bool)
     neg_mask = torch.prod(iou < neg_threshold, dim=1,

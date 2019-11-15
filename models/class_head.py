@@ -7,51 +7,62 @@ class ClassHead(torch.nn.Module):
     A series of 3 convolutional layers to regress
     anchor box detection probabilities.
     '''
-    def __init__(self, in_features=64, num_class=1, last_bias=-1.1,
-                 num_anchors=2,
-                 batch_norm=False, **kwargs):
-        super(ClassHead, self).__init__(**kwargs)
-        kernel_size = (21,11)
-        padding = (10,5)
 
-        conv = [nn.Conv2d(in_features, 256, kernel_size=kernel_size,
-                          stride=1, padding=padding),
-                nn.Conv2d(256, 256,                          
-                          kernel_size=(3, 3),
+    def __init__(self,
+                 in_features,
+                 num_class,
+                 last_bias=-1.1,
+                 num_anchors=2,
+                 kernel_size=(3, 3),
+                 batch_norm=True,
+                 **kwargs):
+        super(ClassHead, self).__init__(**kwargs)
+        self.kernel_size = kernel_size
+        self.padding = (kernel_size[0]//2, kernel_size[1]//2)
+
+        conv = [nn.Conv2d(in_features, 256,
+                          kernel_size=self.kernel_size,
+                          stride=1, padding=self.padding),
+                nn.Conv2d(256, 256,
+                          kernel_size=self.kernel_size,
                           stride=1,
-                          padding=1),
+                          padding=self.padding),
                 nn.Conv2d(in_channels=256,
                           out_channels=int(num_anchors)*int(num_class),
-                          kernel_size=3, stride=1, padding=1, bias=True)]
+                          kernel_size=self.kernel_size, stride=1,
+                          padding=self.padding, bias=True)]
 
         self.params = nn.ModuleList(conv)
-        self.use_bn = batch_norm
+        self.relu = torch.nn.ReLU(inplace=True)
+
         nn.init.constant(self.params[-1].bias, last_bias)
+
         self.batch_norm = nn.ModuleList([nn.BatchNorm2d(256),
-                                         nn.BatchNorm2d(256)])
+                                         nn.BatchNorm2d(256)]) if batch_norm else None
         self.num_classes = num_class
 
     def forward(self, x):
         '''
         x: list of feature maps
         '''
-        features = []
-        res = x
+
+        '''
+        Conv over all layers except the final layer, which
+        does not get an activation or BN (as it is the logit)
+        '''
+        out = x
         for idx, c in enumerate(self.params[0:-1]):
-            res = c(res)
-            if(self.use_bn):
-                res = self.batch_norm[idx](res)
-            res = torch.relu(res)
-            # Keep some (not all) features for visualization
-            features.append(res[:,:10,:,:])            
+            out = c(out)
+            if(self.batch_norm):
+                out = self.batch_norm[idx](out)
+            out = torch.relu(out)
 
         # Last layer does not get activation, it
         # is the logit output.
-        res = self.params[-1](res)
-        res = res.reshape((x.shape[0], -1, self.num_classes))
-        features.append(res)
+        out = self.params[-1](out)
+        out = out.reshape((out.shape[0], -1, self.num_classes))
 
-        return features
+        return out
 
 
 class BoxPrediction(torch.nn.Module):
@@ -61,9 +72,9 @@ class BoxPrediction(torch.nn.Module):
     '''
 
     def __init__(self,
-                 num_anchors=(2, 2),
-                 num_features=(64, 64),
-                 num_class=1,
+                 num_class,
+                 num_anchors,
+                 num_features,
                  last_bias=-2.1,
                  batch_norm=True, **kwargs):
         super(BoxPrediction, self).__init__(**kwargs)
@@ -71,7 +82,7 @@ class BoxPrediction(torch.nn.Module):
                            num_class=num_class,
                            last_bias=last_bias,
                            num_anchors=num_anchors[i],
-                           batch_norm=True)
+                           batch_norm=batch_norm)
                  for i, num in enumerate(num_features)]
         self.heads = nn.ModuleList(heads)
         self.num_classes = num_class
@@ -81,15 +92,9 @@ class BoxPrediction(torch.nn.Module):
 
     def forward(self, feature_maps):
         logits = []
-        features = []
         for idx, feature_map in enumerate(feature_maps):
-            ft = self.heads[idx](feature_map)
-            logits.append(ft[-1])
-            features.append(torch.cat(ft[0:-1], dim=1))
+            layer_logits = self.heads[idx](feature_map)
+            logits.append(layer_logits)
 
         logits = torch.cat(logits, dim=1)
-        data = {
-            'logits': logits,
-            'features': features
-        }
-        return data
+        return logits
