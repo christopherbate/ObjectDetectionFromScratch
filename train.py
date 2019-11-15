@@ -80,13 +80,13 @@ def train_model(args):
     '''
     Outer training loop
     '''
-    start_time = time.time()
     for epoch in range(1, args.epochs+1):
         '''
         Inner training loop
         '''
         print("\n BEGINNING TRAINING STEP EPOCH {}".format(epoch))
         cummulative_loss = 0.0
+        start_time = time.time()
 
         batch: ObjectDetectionBatch
         for idx, batch in enumerate(loader):
@@ -119,8 +119,8 @@ def train_model(args):
             if (idx+1) % args.log_interval == 0:
                 step = (epoch-1)*len(loader)+idx+1
 
-                print("Training Step {} Batch {}/{} Loss : {:.3f}".format(
-                    step, idx, len(loader), cummulative_loss
+                print("Ep {} Training Step {} Batch {}/{} Loss : {:.3f}".format(
+                    epoch, step, idx, len(loader), cummulative_loss
                 ))
 
                 '''
@@ -162,6 +162,13 @@ def train_model(args):
                     "training_loss", losses['class_loss'].item(),
                     global_step=step
                 )
+
+                writer.add_scalar(
+                    "avg_pos_labeled_anchor_conf", torch.tensor(
+                        [c.mean() for c in model_data["pos_labeled_confidence"]]).mean().item(),
+                    global_step=step
+                )
+
                 start_time = time.time()
 
                 writer.close()
@@ -193,9 +200,8 @@ def train_model(args):
                 if idx % args.log_interval == 0:
                     step = (epoch-1)*len(validation_loader)+idx+1
 
-                    print("Validation Step {} Batch {}/{} Loss : {:.3f}".format(
-                        step, idx, len(
-                            validation_loader), losses["class_loss"].item()
+                    print("Ep {} Validation Step {} Batch {}/{} Loss : {:.3f}".format(
+                        epoch, step, idx, len(validation_loader), losses["class_loss"].item()
                     ))
 
                     '''
