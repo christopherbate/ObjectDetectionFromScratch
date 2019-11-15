@@ -106,6 +106,9 @@ class AnchorGenerator(torch.nn.Module):
                         for g in grid_sizes)
         dtype, device = feature_maps[0].dtype, feature_maps[0].device
         self.set_base_anchors(dtype, device)
+
         anchors = self.get_cached_anchors(grid_sizes, strides)
         anchors = torch.cat(anchors, dim=0)
+        anchors.requires_grad = False
+
         return anchors

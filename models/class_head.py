@@ -11,8 +11,8 @@ class ClassHead(torch.nn.Module):
     def __init__(self,
                  in_features,
                  num_class,
-                 last_bias=-1.1,
-                 num_anchors=2,
+                 last_bias,
+                 num_anchors,
                  kernel_size=(3, 3),
                  batch_norm=True,
                  **kwargs):
@@ -53,9 +53,9 @@ class ClassHead(torch.nn.Module):
         out = x
         for idx, c in enumerate(self.params[0:-1]):
             out = c(out)
-            if(self.batch_norm):
-                out = self.batch_norm[idx](out)
-            out = torch.relu(out)
+            # if(self.batch_norm):
+            #     out = self.batch_norm[idx](out)
+            out = self.relu(out)
 
         # Last layer does not get activation, it
         # is the logit output.

@@ -3,6 +3,7 @@ import time
 import argparse
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.ops import nms
+import torchvision
 
 from loaders import FBSDetectionDataset
 from loaders import ObjectDetectionBatch, collate_detection_samples
@@ -22,9 +23,7 @@ def train_model(args):
         data_path=args.images,
         greyscale=True,
         transforms=transforms,
-        categories_filter={
-            'person': True
-        },
+        categories_filter=None,
         area_filter=[100**2, 500**2]
     )
     dataset.print_categories()
@@ -69,16 +68,16 @@ def train_model(args):
         pos_threshold=args.pos_anchor_iou,
         neg_threshold=args.neg_anchor_iou,
         num_classes=len(dataset.categories),
-        predict_conf_threshold=0.5
+        predict_conf_threshold=args.filter_conf
     ).to(device)
 
     '''
     Select optimizer
     '''
     optim = torch.optim.SGD(params=model.parameters(),
-                            lr=args.lr, momentum=0.5)
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer=optim, step_size=2, gamma=0.1, last_epoch=-1)
+                            lr=args.lr, momentum=0.9)
+    # lr_scheduler = torch.optim.lr_scheduler.StepLR(
+    #     optimizer=optim, step_size=2, gamma=0.1, last_epoch=-1)
     '''
     Outer training loop
     '''
@@ -118,7 +117,7 @@ def train_model(args):
             '''
             Log Metrics and Visualizations
             '''
-            if (idx+1) % args.log_interval == 0:
+            if (idx) % args.log_interval == 0:
                 step = (epoch-1)*len(loader)+idx+1
 
                 print("Ep {} Training Step {} Batch {}/{} Loss : {:.3f}".format(
@@ -156,6 +155,34 @@ def train_model(args):
                                             box_tensor=model_data["pos_labeled_anchors"][0], global_step=step)
 
                 '''
+                First layer conv filters
+                '''
+                filter_grid = torchvision.utils.make_grid(
+                    torch.cat([model.backbone.first_conv.weight.data[:, :3, :, :],
+                               model.backbone.first_conv.weight.grad[:, :3, :, :]], dim=0), scale_each=True,
+                    normalize=True)
+                writer.add_image("conv1", filter_grid, global_step=step)
+
+                filter_grid = torchvision.utils.make_grid(
+                    torch.cat([model.backbone.res_blks[0].conv1.weight.data[:, :3, :, :],
+                               model.backbone.res_blks[0].conv1.weight.grad[:, :3, :, :]], dim=0),
+                    normalize=True, scale_each=True)
+                writer.add_image("conv2", filter_grid, global_step=step)
+
+                filter_grid = torchvision.utils.make_grid(
+                    torch.cat([model.backbone.res_blks[1].conv2.weight.data[:, :3, :, :],
+                               model.backbone.res_blks[1].conv2.weight.grad[:, :3, :, :]], dim=0),
+                    normalize=True, scale_each=True)
+                writer.add_image("conv5", filter_grid, global_step=step)
+
+                filter_grid = torchvision.utils.make_grid(
+                    torch.sum(model_data['feature_maps'][0]
+                              [:10, :, :, :], dim=1, keepdim=True),
+                    scale_each=True, normalize=True)
+                writer.add_image("conv1_features",
+                                 filter_grid, global_step=step)
+
+                '''
                 Scalars - batch_time, training loss
                 '''
                 writer.add_scalar(
@@ -168,6 +195,11 @@ def train_model(args):
                 writer.add_scalar(
                     "avg_pos_labeled_anchor_conf", torch.tensor(
                         [c.mean() for c in model_data["pos_labeled_confidence"]]).mean().item(),
+                    global_step=step
+                )
+
+                writer.add_scalar(
+                    "conv1_grad_norm", model.backbone.first_conv.weight.grad.norm().item(),
                     global_step=step
                 )
 
@@ -203,7 +235,8 @@ def train_model(args):
                     step = (epoch-1)*len(validation_loader)+idx+1
 
                     print("Ep {} Validation Step {} Batch {}/{} Loss : {:.3f}".format(
-                        epoch, step, idx, len(validation_loader), losses["class_loss"].item()
+                        epoch, step, idx, len(
+                            validation_loader), losses["class_loss"].item()
                     ))
 
                     '''
@@ -218,8 +251,6 @@ def train_model(args):
 
                     keep_ind = nms(model_data["pos_predicted_anchors"][0],
                                    model_data["pos_predicted_confidence"][0], iou_threshold=0.5)
-                    print("Indicies after NMS: ", keep_ind,
-                          model_data["pos_predicted_confidence"][0].shape, model_data["pos_predicted_anchors"][0].shape)
 
                     writer.add_image_with_boxes("validation_img_predicted_post_nms", sample_image,
                                                 model_data["pos_predicted_anchors"][0][keep_ind], global_step=step)
@@ -233,8 +264,8 @@ def train_model(args):
                     )
                     writer.close()
 
-        lr_scheduler.step()
-        print("Stepped learning rate. Rate is now: ", lr_scheduler.get_lr())
+        # lr_scheduler.step()
+        # print("Stepped learning rate. Rate is now: ", lr_scheduler.get_lr())
 
 
 if __name__ == '__main__':
@@ -253,6 +284,7 @@ if __name__ == '__main__':
     parser.add_argument('--nms_iou', type=float, default=0.5)
     parser.add_argument('--num_data_workers', type=int,
                         default=torch.get_num_threads())
+    parser.add_argument('--filter_conf',  type=float, default=0.5)
     args = parser.parse_args()
 
     # Turn the resize parameter into the reverse (WH -> HW)

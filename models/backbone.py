@@ -19,14 +19,14 @@ class Backbone(torch.nn.Module):
     def __init__(self, **kwargs):
         super(Backbone, self).__init__(**kwargs)
 
-        self.first_conv = torch.nn.Conv2d(1, 16, kernel_size=5,
-                                          stride=2, padding=2)
+        self.first_conv = torch.nn.Conv2d(1, 16, kernel_size=3,
+                                          stride=1, padding=1)
 
         self.res_blks = torch.nn.ModuleList([
             ResBlock(16, 32, kernel_size=(3, 3), stride=1, downsample=torch.nn.Conv2d(
-                16, 32, kernel_size=3, padding=1, stride=1)),
-            ResBlock(32, 64, kernel_size=(3, 3), stride=2, downsample=torch.nn.Conv2d(
-                32, 64, kernel_size=3, padding=1, stride=2))
+                16, 32, kernel_size=1, padding=0, stride=1)),
+            ResBlock(32, 64, kernel_size=(3, 3), stride=1, downsample=torch.nn.Conv2d(
+                32, 64, kernel_size=1, padding=0, stride=1))
         ])
 
         self.activation = torch.nn.ReLU()
@@ -40,9 +40,13 @@ class Backbone(torch.nn.Module):
         out = self.bns[0](out)
         out = self.activation(out)
 
+        feature_maps = [out]
+
         for res_blk in self.res_blks:
             out = res_blk(out)
-        return out
+            feature_maps.append(out)
+
+        return out, feature_maps
 
 
 class ResBlock(torch.nn.Module):

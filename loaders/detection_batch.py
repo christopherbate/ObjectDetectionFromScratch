@@ -56,12 +56,12 @@ class ObjectDetectionBatch:
         '''
         Moves boxes, labels, and images to a given device
         '''
-        self.boxes = self.boxes.to(device)
-        self.labels = self.labels.to(device)
-        self.images = self.images.to(device)
-        self.labels_idx = self.labels_idx.to(device)
+        self.boxes = self.boxes.to(device, non_blocking=True)
+        self.labels = self.labels.to(device, non_blocking=True)
+        self.images = self.images.to(device, non_blocking=True)
+        self.labels_idx = self.labels_idx.to(device, non_blocking=True)
 
 
-def collate_detection_samples(example_list):    
-    batch = ObjectDetectionBatch(example_list)    
+def collate_detection_samples(example_list):
+    batch = ObjectDetectionBatch(example_list)
     return batch
