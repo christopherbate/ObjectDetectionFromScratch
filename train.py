@@ -84,8 +84,8 @@ def train_model(args):
             return 0.1
         if epoch >= 5:
             return 1
-        if epoch > 1:
-            return 2.0
+        if epoch >= 1:
+            return 0.1
         return 0.01
 
     lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
