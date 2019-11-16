@@ -90,6 +90,7 @@ def train_model(args):
         start_time = time.time()
 
         batch: ObjectDetectionBatch
+        model.train()
         for idx, batch in enumerate(loader):
             '''
             Reset gradient
@@ -100,7 +101,7 @@ def train_model(args):
             Push the data to the gpu (if necessary)
             '''
             batch.to(device)
-            batch.debug = True if idx % args.log_interval == 0 else False
+            batch.debug = False  # True if idx % args.log_interval == 0 else False
 
             '''
             Run the model
@@ -219,12 +220,13 @@ def train_model(args):
         print("\nBEGINNING VALIDATION STEP {}\n".format(epoch))
         with torch.no_grad():
             batch: ObjectDetectionBatch
+            model.eval()
             for idx, batch in enumerate(validation_loader):
                 '''
                 Push the data to the gpu (if necessary)
                 '''
                 batch.to(device)
-                batch.debug = True if idx % args.log_interval == 0 else False
+                batch.debug = False  # True if idx % args.log_interval == 0 else False
 
                 '''
                 Run the model
@@ -278,13 +280,13 @@ if __name__ == '__main__':
     parser.add_argument("--device", type=str, default="cpu")
     parser.add_argument("--lr", type=float, default=0.01)
     parser.add_argument("--metric_interval", type=int, default=10)
-    parser.add_argument('--resize', nargs='+', type=int, default=(64, 128))
+    parser.add_argument('--resize', nargs='+', type=int, default=(128, 64))
     parser.add_argument('--neg_anchor_iou', type=float, default=0.4)
     parser.add_argument('--pos_anchor_iou', type=float, default=0.5)
-    parser.add_argument('--nms_iou', type=float, default=0.5)
+    parser.add_argument('--nms_iou', type=float, default=0.4)
     parser.add_argument('--num_data_workers', type=int,
                         default=torch.get_num_threads())
-    parser.add_argument('--filter_conf',  type=float, default=0.5)
+    parser.add_argument('--filter_conf',  type=float, default=0.3)
     args = parser.parse_args()
 
     # Turn the resize parameter into the reverse (WH -> HW)
