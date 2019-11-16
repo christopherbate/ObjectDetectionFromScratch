@@ -20,8 +20,8 @@ class Backbone(torch.nn.Module):
     def __init__(self, layer_depths=[64, 64, 128, 128, 256], **kwargs):
         super(Backbone, self).__init__(**kwargs)
 
-        self.first_conv = torch.nn.Conv2d(1, layer_depths[0], kernel_size=3,
-                                          stride=1, padding=2)
+        self.first_conv = torch.nn.Conv2d(1, layer_depths[0], kernel_size=5,
+                                          stride=2, padding=2)
 
         self.res_blks = torch.nn.ModuleList([
             ResBlock(layer_depths[0], layer_depths[1], kernel_size=(3, 3), stride=1,
@@ -30,7 +30,7 @@ class Backbone(torch.nn.Module):
                      downsample=True),
             ResBlock(layer_depths[2], layer_depths[3], kernel_size=(3, 3), stride=1,
                      downsample=True),
-            ResBlock(layer_depths[3], layer_depths[4], kernel_size=(3, 3), stride=2,
+            ResBlock(layer_depths[3], layer_depths[4], kernel_size=(3, 3), stride=1,
                      downsample=True),
         ])
 

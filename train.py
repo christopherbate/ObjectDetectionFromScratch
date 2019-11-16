@@ -301,9 +301,9 @@ if __name__ == '__main__':
     parser.add_argument("--device", type=str, default="cpu")
     parser.add_argument("--lr", type=float, default=0.01)
     parser.add_argument("--metric_interval", type=int, default=10)
-    parser.add_argument('--resize', nargs='+', type=int, default=(128, 64))
-    parser.add_argument('--neg_anchor_iou', type=float, default=0.5)
-    parser.add_argument('--pos_anchor_iou', type=float, default=0.7)
+    parser.add_argument('--resize', nargs='+', type=int, default=(100, 75))
+    parser.add_argument('--neg_anchor_iou', type=float, default=0.4)
+    parser.add_argument('--pos_anchor_iou', type=float, default=0.5)
     parser.add_argument('--nms_iou', type=float, default=0.4)
     parser.add_argument('--weight_decay', type=float, default=0.0001)
     parser.add_argument('--num_data_workers', type=int,
