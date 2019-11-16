@@ -23,7 +23,7 @@ def train_model(args):
         data_path=args.images,
         greyscale=True,
         transforms=transforms,
-        categories_filter=["person", "car", "bicycle"],
+        categories_filter=["person"],
         area_filter=[100**2, 200**2]
     )
     dataset.print_categories()
@@ -78,12 +78,18 @@ def train_model(args):
                             lr=args.lr, momentum=0.9)
 
     def lr_schedule(epoch):
-        if(epoch == 20):
-            return args.lr*0.1
-        if(epoch == 60):
-            return args.lr*0.01
+        if(epoch >= 60):
+            return 0.01
+        if epoch >= 20:
+            return 0.1
+        if epoch >= 5:
+            return 1
+        if epoch > 1:
+            return 2.0
+        return 0.01
 
-    lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optim, lr_lambda=lr_schedule)
+    lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
+        optim, lr_lambda=[lr_schedule])
 
     '''
     Outer training loop
@@ -92,7 +98,8 @@ def train_model(args):
         '''
         Inner training loop
         '''
-        print("\n BEGINNING TRAINING STEP EPOCH {}".format(epoch))
+        print("\n BEGINNING TRAINING STEP EPOCH {} LR {}".format(
+            epoch, lr_scheduler.get_lr()))
         cummulative_loss = 0.0
         start_time = time.time()
 
