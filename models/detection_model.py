@@ -38,7 +38,7 @@ class ObjectDetection(torch.nn.Module):
 
         # The feature counts / depth for each feature map considered
         # for the class regression head
-        self.FEATURE_COUNTS = (128,)
+        self.FEATURE_COUNTS = (256,)
 
         # Anchor sizes  (per layer)
         # The anchors sizes need to scale to cover the sizes of possible objects
@@ -59,7 +59,7 @@ class ObjectDetection(torch.nn.Module):
                                                 aspect_ratios=self.ANCHOR_RATIOS)
 
         self.box_prediction = BoxPrediction(num_features=self.FEATURE_COUNTS,
-                                            feature_depth=128,
+                                            feature_depth=256,
                                             num_class=num_classes,
                                             batch_norm=True,
                                             last_bias=-9.0,
