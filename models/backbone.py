@@ -16,11 +16,11 @@ class Backbone(torch.nn.Module):
     However, the sooner you downsample, the more spatial information you loose.
     '''
 
-    def __init__(self, layer_depths=[16, 32, 64], **kwargs):
+    def __init__(self, layer_depths=[32, 64, 128], **kwargs):
         super(Backbone, self).__init__(**kwargs)
 
-        self.first_conv = torch.nn.Conv2d(1, layer_depths[0], kernel_size=3,
-                                          stride=1, padding=1)
+        self.first_conv = torch.nn.Conv2d(1, layer_depths[0], kernel_size=5,
+                                          stride=2, padding=2)
 
         self.res_blks = torch.nn.ModuleList([
             ResBlock(layer_depths[0], layer_depths[1], kernel_size=(3, 3), stride=1, downsample=torch.nn.Conv2d(
@@ -67,7 +67,7 @@ class ResBlock(torch.nn.Module):
                  stride=(1, 1),
                  downsample=None):
         super(ResBlock, self).__init__()
-        
+
         self.conv1 = torch.nn.Conv2d(
             in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size,
             bias=False, groups=1, stride=stride, padding=(kernel_size[0]//2, kernel_size[1]//2))

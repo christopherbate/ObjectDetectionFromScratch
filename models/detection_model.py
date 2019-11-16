@@ -38,7 +38,7 @@ class ObjectDetection(torch.nn.Module):
 
         # The feature counts / depth for each feature map considered
         # for the class regression head
-        self.FEATURE_COUNTS = (64,)
+        self.FEATURE_COUNTS = (128,)
 
         # Anchor sizes  (per layer)
         # The anchors sizes need to scale to cover the sizes of possible objects
