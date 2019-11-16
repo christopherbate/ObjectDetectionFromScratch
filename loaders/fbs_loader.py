@@ -1,13 +1,16 @@
+from loaders.dataset_fbs import BoundingBox
+from loaders.dataset_fbs import Category
+from loaders.dataset_fbs import Example
+from loaders.dataset_fbs import Dataset
+from loaders.dataset_fbs import Annotation
+import numpy as np
 import os
 import torch
 from PIL import Image
-import numpy as np
-
-from loaders.dataset_fbs import Annotation
-from loaders.dataset_fbs import Dataset
-from loaders.dataset_fbs import Example
-from loaders.dataset_fbs import Category
-from loaders.dataset_fbs import BoundingBox
+from PIL import ImageFile
+from torch.utils.data import DataLoader
+from loaders import collate_detection_samples
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 class FBSDetectionDataset(torch.utils.data.Dataset):
@@ -78,7 +81,8 @@ class FBSDetectionDataset(torch.utils.data.Dataset):
             len(self.examples)))
         print("Filtered Dataset has {} categories".format(len(self.categories)))
 
-        self.one_hot_matrix = np.eye(len(self.categories), dtype=np.float32)
+        self.one_hot_matrix = torch.eye(
+            len(self.categories), dtype=torch.float32)
 
     def print_categories(self):
         print("Categories: (total: {})".format(len(self.categories.keys())))
@@ -86,15 +90,29 @@ class FBSDetectionDataset(torch.utils.data.Dataset):
             print("{} : {} : {} : {}".format(
                 label_id, cat["remap_id"], cat["name"], cat["num_images"]))
 
+    def verify_images(self):
+        loader = DataLoader(dataset=self, batch_size=100,
+                            collate_fn=collate_detection_samples, num_workers=12)
+        for idx, sample in enumerate(loader):
+            if idx % 10 == 0:
+                print(idx)
+            continue
+
+
     def __getitem__(self, idx):
         example = self.examples[idx]
         file_name = example.FileName().decode('utf-8')
         img = Image.open(os.path.join(self.data_path,
                                       file_name))
-        if(self.greyscale):
-            img = img.convert('L')
-        else:
-            img = img.convert('RGB')
+
+        try:
+            if(self.greyscale):
+                img = img.convert('L')
+            else:
+                img = img.convert('RGB')
+        except IOError:
+            print("Error: could not load {}".format(file_name))
+            return
 
         width, height = example.Width(), example.Height()
 
@@ -111,7 +129,7 @@ class FBSDetectionDataset(torch.utils.data.Dataset):
 
         sample = {
             'image': img,
-            'boxes': np.array(boxes),
+            'boxes': torch.tensor(boxes),
             'labels': self.one_hot_matrix[labels],
             'labels_idx': torch.tensor(labels, dtype=torch.long),
             'width': width,

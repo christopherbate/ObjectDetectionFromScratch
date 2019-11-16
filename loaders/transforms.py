@@ -61,11 +61,11 @@ class RandomResizeCropSample(object):
         img: PIL image
         '''
 
-        new_sample = {}
+        new_sample = sample
 
-        new_sample['boxes'] = torch.from_numpy(sample['boxes'])
-        new_sample['labels'] = torch.from_numpy(sample['labels'])
-        new_sample['labels_idx'] = sample['labels_idx']
+        # new_sample['boxes'] = sample['boxes']
+        # new_sample['labels'] = sample['labels']
+        # new_sample['labels_idx'] = sample['labels_idx']
 
         # i, j, h, w = self.get_params(sample['image'], self.scale, self.ratio)
         i, j, h, w = 0, 0, sample['image'].height, sample['image'].width
@@ -86,7 +86,6 @@ class RandomResizeCropSample(object):
             (j, i, j+w, i+h),
             width_ratio, height_ratio)
         new_sample["boxes"] = new_sample["boxes"].to(self.box_dtype)
-
         new_sample['labels'] = new_sample['labels'][inds]
 
         return new_sample
