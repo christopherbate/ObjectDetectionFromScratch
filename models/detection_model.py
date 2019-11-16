@@ -45,7 +45,7 @@ class ObjectDetection(torch.nn.Module):
         # in the dataset.
         # You can either set an absolute pixel value, or set based off size of image.
         width = input_image_shape[-1]
-        self.ANCHOR_SIZES = ((20, 25, 30, 35, 40, 45, 50, 55),)
+        self.ANCHOR_SIZES = ((25, 30, 35, 40, 45, 50, 55),)
 
         # These ratios are for all anchors
         self.ANCHOR_RATIOS = (1.0, 2.0, 0.5)
@@ -123,16 +123,16 @@ class ObjectDetection(torch.nn.Module):
         in-model debugging
         '''
         if batch.debug == True:
-            print("Class Loss: Red {:.4f} Mean {:.4f} Shape: {}".format(
-                class_loss_reduced, class_loss.mean(), class_loss.shape))
+            # print("Class Loss: Red {:.4f} Mean {:.4f} Shape: {}".format(
+            #     class_loss_reduced, class_loss.mean(), class_loss.shape))
             print("Class Loss Pos {:.4f} Neg {:.4f}".format(
                 class_loss[pos_labeled_mask].mean(
                 ), class_loss[neg_labeled_mask].mean()
             ))
 
-            print("Mask shape: {}".format(fgbg_mask.shape))
-            print("Class Probabilities {}".format(probs.shape))
-            print("Class Target Shape: {}".format(class_targets.shape))
+            # print("Mask shape: {}".format(fgbg_mask.shape))
+            # print("Class Probabilities {}".format(probs.shape))
+            # print("Class Target Shape: {}".format(class_targets.shape))
 
             # Uncomment to check that all positive anchors are receiving a target of "1.0"
             # print("Pos Target Check: {:.2f}".format(
