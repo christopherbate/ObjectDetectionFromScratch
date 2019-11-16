@@ -124,6 +124,7 @@ class FBSDetectionDataset(torch.utils.data.Dataset):
             box = ann.Bbox()
 
             if(ann.CatId() in self.categories):
+                if(ann.Area() > self.area_limits[0] and ann.Area() < self.area_limits[1]):
                 boxes.append([box.X1(), box.Y1(), box.X2(), box.Y2()])
                 labels.append(self.categories[ann.CatId()]["remap_id"])
 
