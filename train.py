@@ -24,7 +24,7 @@ def train_model(args):
         greyscale=True,
         transforms=transforms,
         categories_filter=["person"],
-        area_filter=[50**2, 150**2]
+        area_filter=[50**2, 250**2]
     )
     dataset.print_categories()
 
