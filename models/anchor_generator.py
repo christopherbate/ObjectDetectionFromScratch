@@ -109,6 +109,5 @@ class AnchorGenerator(torch.nn.Module):
 
         anchors = self.get_cached_anchors(grid_sizes, strides)
         anchors = torch.cat(anchors, dim=0)
-        anchors.requires_grad = False
 
         return anchors

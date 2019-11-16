@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from research.MultiFilter import blob_initializer, first_order_initializer
 
 
 class Backbone(torch.nn.Module):
@@ -19,8 +20,8 @@ class Backbone(torch.nn.Module):
     def __init__(self, layer_depths=[64, 64, 128, 128, 256], **kwargs):
         super(Backbone, self).__init__(**kwargs)
 
-        self.first_conv = torch.nn.Conv2d(1, layer_depths[0], kernel_size=5,
-                                          stride=2, padding=2)
+        self.first_conv = torch.nn.Conv2d(1, layer_depths[0], kernel_size=3,
+                                          stride=1, padding=2)
 
         self.res_blks = torch.nn.ModuleList([
             ResBlock(layer_depths[0], layer_depths[1], kernel_size=(3, 3), stride=1,
@@ -33,13 +34,14 @@ class Backbone(torch.nn.Module):
                      downsample=True),
         ])
 
-        self.activation = torch.nn.ReLU()
+        self.activation = torch.nn.PReLU()
         self.bns = torch.nn.ModuleList([
             torch.nn.BatchNorm2d(layer_depths[0])
         ])
 
-        torch.nn.init.kaiming_normal_(self.first_conv.weight,
-                                      mode='fan_out', nonlinearity='relu')
+        # torch.nn.init.kaiming_normal_(self.first_conv.weight,
+        #                               mode='fan_out', nonlinearity='leaky_relu')
+        first_order_initializer(self.first_conv.weight)
 
     def forward(self, x):
 
@@ -77,7 +79,7 @@ class ResBlock(torch.nn.Module):
             bias=False, groups=1, stride=stride, padding=(kernel_size[0]//2, kernel_size[1]//2))
 
         torch.nn.init.kaiming_normal_(
-            self.conv1.weight, mode='fan_out', nonlinearity='relu')
+            self.conv1.weight, mode='fan_out', nonlinearity='leaky_relu')
         self.bn1 = torch.nn.BatchNorm2d(out_channels)
 
         self.conv2 = torch.nn.Conv2d(
@@ -85,10 +87,10 @@ class ResBlock(torch.nn.Module):
             bias=False, groups=1, stride=1, padding=(kernel_size[0]//2, kernel_size[1]//2))
 
         torch.nn.init.kaiming_normal_(
-            self.conv2.weight, mode='fan_out', nonlinearity='relu')
+            self.conv2.weight, mode='fan_out', nonlinearity='leaky_relu')
         self.bn2 = torch.nn.BatchNorm2d(num_features=out_channels)
 
-        self.relu = torch.nn.ReLU(inplace=True)
+        self.relu = torch.nn.PReLU()
         self.downsample = downsample
         if(downsample is not None):
             self.downsample = torch.nn.Sequential(
