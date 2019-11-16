@@ -8,7 +8,7 @@ class Backbone(torch.nn.Module):
 
     This is defined heuristically.
 
-    Keep in mind - you need to downsample as you go along (either 
+    Keep in mind - you need to downsample as you go along (either
     by stride 2 conv layers or pooling)
 
     The sooner you downsample, the faster and smaller your network will be
@@ -16,19 +16,21 @@ class Backbone(torch.nn.Module):
     However, the sooner you downsample, the more spatial information you loose.
     '''
 
-    def __init__(self, layer_depths=[32, 64, 128], **kwargs):
+    def __init__(self, layer_depths=[32, 32, 64, 64, 128], **kwargs):
         super(Backbone, self).__init__(**kwargs)
 
         self.first_conv = torch.nn.Conv2d(1, layer_depths[0], kernel_size=5,
                                           stride=2, padding=2)
 
         self.res_blks = torch.nn.ModuleList([
-            ResBlock(layer_depths[0], layer_depths[1], kernel_size=(3, 3), stride=2,
-                     downsample=torch.nn.Conv2d(
-                layer_depths[0], layer_depths[1], kernel_size=3, padding=1, stride=2)),
+            ResBlock(layer_depths[0], layer_depths[1], kernel_size=(3, 3), stride=1,
+                     downsample=True),
             ResBlock(layer_depths[1], layer_depths[2], kernel_size=(3, 3), stride=2,
-                     downsample=torch.nn.Conv2d(
-                layer_depths[1], layer_depths[2], kernel_size=3, padding=1, stride=2))
+                     downsample=True),
+            ResBlock(layer_depths[2], layer_depths[3], kernel_size=(3, 3), stride=1,
+                     downsample=True),
+            ResBlock(layer_depths[3], layer_depths[4], kernel_size=(3, 3), stride=2,
+                     downsample=True),
         ])
 
         self.activation = torch.nn.ReLU()
@@ -58,7 +60,7 @@ class ResBlock(torch.nn.Module):
     '''
     ResBlock
 
-    Implements a simple residual layer 
+    Implements a simple residual layer
 
     Note the ordering of the batch norm w.r.t. the ReLU
     '''
@@ -88,6 +90,12 @@ class ResBlock(torch.nn.Module):
 
         self.relu = torch.nn.ReLU(inplace=True)
         self.downsample = downsample
+        if(downsample is not None):
+            self.downsample = torch.nn.Sequential(
+                torch.nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
+                                kernel_size=1, stride=stride, padding=0),
+                torch.nn.BatchNorm2d(num_features=out_channels)
+            )
 
     def forward(self, x):
         identity = x
