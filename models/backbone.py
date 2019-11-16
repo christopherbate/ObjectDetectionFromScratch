@@ -21,6 +21,8 @@ class Backbone(torch.nn.Module):
 
         self.first_conv = torch.nn.Conv2d(1, 16, kernel_size=3,
                                           stride=1, padding=1)
+        torch.nn.init.kaiming_normal_(self.first_conv.weight,
+                                mode='fan_out', nonlinearity='relu')
 
         self.res_blks = torch.nn.ModuleList([
             ResBlock(16, 32, kernel_size=(3, 3), stride=1, downsample=torch.nn.Conv2d(
@@ -67,11 +69,15 @@ class ResBlock(torch.nn.Module):
         self.conv1 = torch.nn.Conv2d(
             in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size,
             bias=False, groups=1, stride=stride, padding=(kernel_size[0]//2, kernel_size[1]//2))
+        torch.nn.init.kaiming_normal_(
+            self.conv1.weight, mode='fan_out', nonlinearity='relu')
         self.bn1 = torch.nn.BatchNorm2d(out_channels)
 
         self.conv2 = torch.nn.Conv2d(
             in_channels=out_channels, out_channels=out_channels, kernel_size=kernel_size,
             bias=False, groups=1, stride=1, padding=(kernel_size[0]//2, kernel_size[1]//2))
+        torch.nn.init.kaiming_normal_(
+            self.conv2.weight, mode='fan_out', nonlinearity='relu')
         self.bn2 = torch.nn.BatchNorm2d(num_features=out_channels)
         self.relu = torch.nn.ReLU(inplace=True)
         self.downsample = downsample

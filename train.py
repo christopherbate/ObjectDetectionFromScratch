@@ -23,8 +23,8 @@ def train_model(args):
         data_path=args.images,
         greyscale=True,
         transforms=transforms,
-        categories_filter=None,
-        area_filter=[100**2, 500**2]
+        categories_filter=["person","car","bicycle"],
+        area_filter=[100**2, 200**2]
     )
     dataset.print_categories()
 

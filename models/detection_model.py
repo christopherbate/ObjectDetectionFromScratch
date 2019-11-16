@@ -50,7 +50,7 @@ class ObjectDetection(torch.nn.Module):
                               width//1.5),)
 
         # These ratios are for all anchors
-        self.ANCHOR_RATIOS = (1.0, 0.5, 2.0)
+        self.ANCHOR_RATIOS = (1.0,)
 
         self.backbone = Backbone()
         self.anchor_generator = AnchorGenerator(sizes=self.ANCHOR_SIZES,
@@ -59,6 +59,7 @@ class ObjectDetection(torch.nn.Module):
         self.box_prediction = BoxPrediction(num_features=self.FEATURE_COUNTS,
                                             num_class=num_classes,
                                             batch_norm=True,
+                                            last_bias=-4.0,
                                             num_anchors=[len(anchors)*len(self.ANCHOR_RATIOS) for anchors in self.ANCHOR_SIZES])
 
         self.loss = torch.nn.BCEWithLogitsLoss(reduce=False)
