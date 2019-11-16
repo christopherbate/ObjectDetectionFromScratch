@@ -52,7 +52,7 @@ class ObjectDetection(torch.nn.Module):
             width/3),)
 
         # These ratios are for all anchors
-        self.ANCHOR_RATIOS = (1.0,)
+        self.ANCHOR_RATIOS = (1.0, 2.0, 0.5)
 
         self.backbone = Backbone()
         self.anchor_generator = AnchorGenerator(sizes=self.ANCHOR_SIZES,
