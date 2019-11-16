@@ -46,10 +46,10 @@ class ObjectDetection(torch.nn.Module):
         # You can either set an absolute pixel value, or set based off size of image.
         width = input_image_shape[-1]
         self.ANCHOR_SIZES = ((
+            width/6.5,
             width/6,
-            width/5,
-            width/4,
-            width/3),)
+            width/5.5,
+            width/5),)
 
         # These ratios are for all anchors
         self.ANCHOR_RATIOS = (1.0, 2.0, 0.5)
