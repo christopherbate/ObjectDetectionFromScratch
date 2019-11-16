@@ -219,6 +219,11 @@ def train_model(args):
                     "conv1_grad_norm", model.backbone.first_conv.weight.grad.norm().item(),
                     global_step=step
                 )
+                writer.add_scalar(
+                    "backbone_last_grad_norm", model.backbone.res_blks[-1].conv2.weight.grad.norm(
+                    ).item(),
+                    global_step=step
+                )
 
                 start_time = time.time()
 
