@@ -12,10 +12,12 @@ class BoxPrediction(torch.nn.Module):
                  num_class,
                  num_anchors,
                  num_features,
+                 feature_depth=128,
                  last_bias=-4.1,
                  batch_norm=True, **kwargs):
         super(BoxPrediction, self).__init__(**kwargs)
         heads = [ClassHead(in_features=num,
+                           feature_depth=feature_depth,
                            num_class=num_class,
                            last_bias=last_bias,
                            num_anchors=num_anchors[i],
@@ -48,7 +50,7 @@ class ClassHead(torch.nn.Module):
                  num_class,
                  last_bias,
                  num_anchors,
-                 feature_depth=128,
+                 feature_depth,
                  kernel_size=(3, 3),
                  batch_norm=True,
                  **kwargs):
