@@ -5,6 +5,7 @@ from scipy import ndimage
 import scipy.stats
 from research.gauss import gaussian2d
 
+
 def gauss_initializer(filter_tensor):
     width = filter_tensor.shape[-1]
     height = filter_tensor.shape[-2]
@@ -75,19 +76,19 @@ def first_order_initializer(filter_tensor):
         offset_2 = height/2
         base_filter = torch.zeros_like(filter_tensor[0, 0])
         base_filter += torch.from_numpy(gkern((height, width),
-                                            offset=(offset_1, 0), scale=(1, 1),
-                                            nsig=3), dtype=base_filter.dtype)
+                                              offset=(offset_1, 0), scale=(1, 1),
+                                              nsig=3)).to(base_filter.dtype)
 
         base_filter -= torch.from_numpy(gkern((height, width),
-                                            offset=(-offset_1, 0), scale=(1, 1),
-                                            nsig=3), dtype=base_filter.dtype)
+                                              offset=(-offset_1, 0), scale=(1, 1),
+                                              nsig=3)).to(base_filter.dtype)
 
         angles = torch.linspace(0, 360, num_output)
         for chn_idx in range(num_output):
             for in_idx in range(num_input):
                 filter_tensor[chn_idx, in_idx] = torch.from_numpy(ndimage.rotate(base_filter.numpy(),
-                                                                                angles[chn_idx],
-                                                                                reshape=False, mode='nearest'))
+                                                                                 angles[chn_idx],
+                                                                                 reshape=False, mode='nearest'))
         return filter_tensor
 
 
@@ -108,11 +109,11 @@ def blob_initializer(filter_tensor):
             for in_idx in range(num_input):
                 base_filter = torch.zeros_like(filter_tensor[0, 0])
                 base_filter += torch.from_numpy(gkern((height, width),
-                                                    offset=(0, 0), scale=(sigma, sigma),
-                                                    nsig=3))
+                                                      offset=(0, 0), scale=(sigma, sigma),
+                                                      nsig=3))
                 base_filter -= 2.0*torch.from_numpy(gkern((height, width),
-                                                    offset=(0, 0), scale=(sigma_prev, sigma_prev),
-                                                    nsig=3))
+                                                          offset=(0, 0), scale=(sigma_prev, sigma_prev),
+                                                          nsig=3))
                 filter_tensor[chn_idx, in_idx] = base_filter
 
         return filter_tensor
