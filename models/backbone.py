@@ -23,10 +23,12 @@ class Backbone(torch.nn.Module):
                                           stride=2, padding=2)
 
         self.res_blks = torch.nn.ModuleList([
-            ResBlock(layer_depths[0], layer_depths[1], kernel_size=(3, 3), stride=1, downsample=torch.nn.Conv2d(
-                layer_depths[0], layer_depths[1], kernel_size=1, padding=0, stride=1)),
-            ResBlock(layer_depths[1], layer_depths[2], kernel_size=(3, 3), stride=1, downsample=torch.nn.Conv2d(
-                layer_depths[1], layer_depths[2], kernel_size=1, padding=0, stride=1))
+            ResBlock(layer_depths[0], layer_depths[1], kernel_size=(3, 3), stride=2,
+                     downsample=torch.nn.Conv2d(
+                layer_depths[0], layer_depths[1], kernel_size=3, padding=1, stride=2)),
+            ResBlock(layer_depths[1], layer_depths[2], kernel_size=(3, 3), stride=2,
+                     downsample=torch.nn.Conv2d(
+                layer_depths[1], layer_depths[2], kernel_size=3, padding=1, stride=2))
         ])
 
         self.activation = torch.nn.ReLU()
