@@ -16,25 +16,26 @@ class Backbone(torch.nn.Module):
     However, the sooner you downsample, the more spatial information you loose.
     '''
 
-    def __init__(self, **kwargs):
+    def __init__(self, layer_depths=[16, 32, 64], **kwargs):
         super(Backbone, self).__init__(**kwargs)
 
-        self.first_conv = torch.nn.Conv2d(1, 16, kernel_size=3,
+        self.first_conv = torch.nn.Conv2d(1, layer_depths[0], kernel_size=3,
                                           stride=1, padding=1)
-        torch.nn.init.kaiming_normal_(self.first_conv.weight,
-                                mode='fan_out', nonlinearity='relu')
 
         self.res_blks = torch.nn.ModuleList([
-            ResBlock(16, 32, kernel_size=(3, 3), stride=1, downsample=torch.nn.Conv2d(
-                16, 32, kernel_size=1, padding=0, stride=1)),
-            ResBlock(32, 64, kernel_size=(3, 3), stride=1, downsample=torch.nn.Conv2d(
-                32, 64, kernel_size=1, padding=0, stride=1))
+            ResBlock(layer_depths[0], layer_depths[1], kernel_size=(3, 3), stride=1, downsample=torch.nn.Conv2d(
+                layer_depths[0], layer_depths[1], kernel_size=1, padding=0, stride=1)),
+            ResBlock(layer_depths[1], layer_depths[2], kernel_size=(3, 3), stride=1, downsample=torch.nn.Conv2d(
+                layer_depths[1], layer_depths[2], kernel_size=1, padding=0, stride=1))
         ])
 
         self.activation = torch.nn.ReLU()
         self.bns = torch.nn.ModuleList([
-            torch.nn.BatchNorm2d(16)
+            torch.nn.BatchNorm2d(layer_depths[0])
         ])
+
+        torch.nn.init.kaiming_normal_(self.first_conv.weight,
+                                      mode='fan_out', nonlinearity='relu')
 
     def forward(self, x):
 
@@ -66,9 +67,11 @@ class ResBlock(torch.nn.Module):
                  stride=(1, 1),
                  downsample=None):
         super(ResBlock, self).__init__()
+        
         self.conv1 = torch.nn.Conv2d(
             in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size,
             bias=False, groups=1, stride=stride, padding=(kernel_size[0]//2, kernel_size[1]//2))
+
         torch.nn.init.kaiming_normal_(
             self.conv1.weight, mode='fan_out', nonlinearity='relu')
         self.bn1 = torch.nn.BatchNorm2d(out_channels)
@@ -76,9 +79,11 @@ class ResBlock(torch.nn.Module):
         self.conv2 = torch.nn.Conv2d(
             in_channels=out_channels, out_channels=out_channels, kernel_size=kernel_size,
             bias=False, groups=1, stride=1, padding=(kernel_size[0]//2, kernel_size[1]//2))
+
         torch.nn.init.kaiming_normal_(
             self.conv2.weight, mode='fan_out', nonlinearity='relu')
         self.bn2 = torch.nn.BatchNorm2d(num_features=out_channels)
+
         self.relu = torch.nn.ReLU(inplace=True)
         self.downsample = downsample
 

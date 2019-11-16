@@ -58,23 +58,30 @@ class ClassHead(torch.nn.Module):
 
         conv = [nn.Conv2d(in_features, feature_depth,
                           kernel_size=self.kernel_size,
-                          stride=1, padding=self.padding),
+                          stride=1, bias=False,
+                          padding=self.padding),
                 nn.Conv2d(feature_depth, feature_depth,
                           kernel_size=self.kernel_size,
-                          stride=1,
+                          stride=1, bias=False,
                           padding=self.padding),
                 nn.Conv2d(in_channels=feature_depth,
                           out_channels=int(num_anchors)*int(num_class),
                           kernel_size=self.kernel_size, stride=1,
                           padding=self.padding, bias=True)]
 
-        self.params = nn.ModuleList(conv)
+        self.conv = nn.ModuleList(conv)
         self.relu = torch.nn.ReLU(inplace=True)
 
-        nn.init.constant(self.params[-1].bias, last_bias)
+        nn.init.kaiming_normal(
+            self.conv[0].weight, mode='fan_out', nonlinearity='relu')
+        nn.init.kaiming_normal(
+            self.conv[1].weight, mode='fan_out', nonlinearity='relu')
+        nn.init.kaiming_normal(
+            self.conv[2].weight, mode='fan_out', nonlinearity='relu')
+        nn.init.constant(self.conv[-1].bias, last_bias)
 
-        self.batch_norm = nn.ModuleList([nn.BatchNorm2d(256),
-                                         nn.BatchNorm2d(256)]) if batch_norm else None
+        self.batch_norm = nn.ModuleList([nn.BatchNorm2d(feature_depth),
+                                         nn.BatchNorm2d(feature_depth)]) if batch_norm else None
         self.num_classes = num_class
 
     def forward(self, x):
@@ -87,15 +94,17 @@ class ClassHead(torch.nn.Module):
         does not get an activation or BN (as it is the logit)
         '''
         out = x
-        for idx, c in enumerate(self.params[0:-1]):
+        for idx, c in enumerate(self.conv[0:-1]):
             out = c(out)
-            # if(self.batch_norm):
-            #     out = self.batch_norm[idx](out)
+
+            if(self.batch_norm):
+                out = self.batch_norm[idx](out)
+
             out = self.relu(out)
 
         # Last layer does not get activation, it
         # is the logit output.
-        out = self.params[-1](out)
+        out = self.conv[-1](out)
         out = out.reshape((out.shape[0], -1, self.num_classes))
 
         return out

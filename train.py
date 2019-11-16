@@ -23,7 +23,7 @@ def train_model(args):
         data_path=args.images,
         greyscale=True,
         transforms=transforms,
-        categories_filter=["person","car","bicycle"],
+        categories_filter=["person", "car", "bicycle"],
         area_filter=[100**2, 200**2]
     )
     dataset.print_categories()
@@ -76,8 +76,15 @@ def train_model(args):
     '''
     optim = torch.optim.SGD(params=model.parameters(),
                             lr=args.lr, momentum=0.9)
-    # lr_scheduler = torch.optim.lr_scheduler.StepLR(
-    #     optimizer=optim, step_size=2, gamma=0.1, last_epoch=-1)
+
+    def lr_schedule(epoch):
+        if(epoch == 20):
+            return args.lr*0.1
+        if(epoch == 60):
+            return args.lr*0.01
+
+    lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optim, lr_lambda=lr_schedule)
+
     '''
     Outer training loop
     '''
@@ -158,28 +165,30 @@ def train_model(args):
                 '''
                 First layer conv filters
                 '''
+                scale_each = False
                 filter_grid = torchvision.utils.make_grid(
                     torch.cat([model.backbone.first_conv.weight.data[:, :3, :, :],
-                               model.backbone.first_conv.weight.grad[:, :3, :, :]], dim=0), scale_each=True,
+                               model.backbone.first_conv.weight.grad[:, :3, :, :]], dim=0),
+                    scale_each=scale_each,
                     normalize=True)
                 writer.add_image("conv1", filter_grid, global_step=step)
 
                 filter_grid = torchvision.utils.make_grid(
                     torch.cat([model.backbone.res_blks[0].conv1.weight.data[:, :3, :, :],
                                model.backbone.res_blks[0].conv1.weight.grad[:, :3, :, :]], dim=0),
-                    normalize=True, scale_each=True)
+                    normalize=True, scale_each=scale_each)
                 writer.add_image("conv2", filter_grid, global_step=step)
 
                 filter_grid = torchvision.utils.make_grid(
                     torch.cat([model.backbone.res_blks[1].conv2.weight.data[:, :3, :, :],
                                model.backbone.res_blks[1].conv2.weight.grad[:, :3, :, :]], dim=0),
-                    normalize=True, scale_each=True)
+                    normalize=True, scale_each=scale_each)
                 writer.add_image("conv5", filter_grid, global_step=step)
 
                 filter_grid = torchvision.utils.make_grid(
                     torch.sum(model_data['feature_maps'][0]
                               [:10, :, :, :], dim=1, keepdim=True),
-                    scale_each=True, normalize=True)
+                    scale_each=scale_each, normalize=True)
                 writer.add_image("conv1_features",
                                  filter_grid, global_step=step)
 
@@ -266,8 +275,8 @@ def train_model(args):
                     )
                     writer.close()
 
-        # lr_scheduler.step()
-        # print("Stepped learning rate. Rate is now: ", lr_scheduler.get_lr())
+        lr_scheduler.step()
+        print("Stepped learning rate. Rate is now: ", lr_scheduler.get_lr())
 
 
 if __name__ == '__main__':
