@@ -72,13 +72,13 @@ class ClassHead(torch.nn.Module):
         self.conv = nn.ModuleList(conv)
         self.relu = torch.nn.ReLU(inplace=True)
 
-        nn.init.kaiming_normal(
+        nn.init.kaiming_normal_(
             self.conv[0].weight, mode='fan_out', nonlinearity='relu')
-        nn.init.kaiming_normal(
+        nn.init.kaiming_normal_(
             self.conv[1].weight, mode='fan_out', nonlinearity='relu')
-        nn.init.kaiming_normal(
+        nn.init.kaiming_normal_(
             self.conv[2].weight, mode='fan_out', nonlinearity='relu')
-        nn.init.constant(self.conv[-1].bias, last_bias)
+        nn.init.constant_(self.conv[-1].bias, last_bias)
 
         self.batch_norm = nn.ModuleList([nn.BatchNorm2d(feature_depth),
                                          nn.BatchNorm2d(feature_depth)]) if batch_norm else None
