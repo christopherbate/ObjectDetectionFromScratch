@@ -59,6 +59,7 @@ class ObjectDetection(torch.nn.Module):
                                                 aspect_ratios=self.ANCHOR_RATIOS)
 
         self.box_prediction = BoxPrediction(num_features=self.FEATURE_COUNTS,
+                                            feature_depth=128,
                                             num_class=num_classes,
                                             batch_norm=True,
                                             last_bias=-9.0,
