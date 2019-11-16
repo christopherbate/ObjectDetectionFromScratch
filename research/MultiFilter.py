@@ -76,11 +76,11 @@ def first_order_initializer(filter_tensor):
         base_filter = torch.zeros_like(filter_tensor[0, 0])
         base_filter += torch.from_numpy(gkern((height, width),
                                             offset=(offset_1, 0), scale=(1, 1),
-                                            nsig=3))
+                                            nsig=3), dtype=base_filter.dtype)
 
         base_filter -= torch.from_numpy(gkern((height, width),
                                             offset=(-offset_1, 0), scale=(1, 1),
-                                            nsig=3))
+                                            nsig=3), dtype=base_filter.dtype)
 
         angles = torch.linspace(0, 360, num_output)
         for chn_idx in range(num_output):
