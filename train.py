@@ -172,7 +172,7 @@ def train_model(args):
                 '''
                 First layer conv filters
                 '''
-                scale_each = False
+                scale_each = True
                 filter_grid = torchvision.utils.make_grid(
                     torch.cat([model.backbone.first_conv.weight.data[:, :3, :, :],
                                model.backbone.first_conv.weight.grad[:, :3, :, :]], dim=0),
