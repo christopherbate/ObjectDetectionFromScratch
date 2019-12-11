@@ -72,3 +72,15 @@ tensorboard --logdir=./runs
 
 When developing a **dense object detection** model like this, the **ClassHead** is a CNN which predicts 
 whether or not an object is at each position in the final feature map of the **backbone**.
+
+
+## Other
+
+### Python Linting
+Add following to VS code args:
+'''
+  "python.linting.pylintArgs": [
+        "--errors-only",
+        "--generated-members=numpy.* ,torch.* ,cv2.* , cv.*"
+    ]
+'''
