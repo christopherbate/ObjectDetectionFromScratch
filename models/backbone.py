@@ -17,7 +17,7 @@ class Backbone(torch.nn.Module):
     However, the sooner you downsample, the more spatial information you loose.
     '''
 
-    def __init__(self, layer_depths=[64, 64, 128, 128, 128], **kwargs):
+    def __init__(self, layer_depths=[25, 64, 128, 128, 256], **kwargs):
         super(Backbone, self).__init__(**kwargs)
 
         self.first_conv = torch.nn.Conv2d(1, layer_depths[0], kernel_size=5,
@@ -30,18 +30,18 @@ class Backbone(torch.nn.Module):
                      downsample=True),
             ResBlock(layer_depths[2], layer_depths[3], kernel_size=(3, 3), stride=1,
                      downsample=True),
-            ResBlock(layer_depths[3], layer_depths[4], kernel_size=(3, 3), stride=1,
+            ResBlock(layer_depths[3], layer_depths[4], kernel_size=(3, 3), stride=2,
                      downsample=True),
         ])
 
-        self.activation = torch.nn.PReLU()
+        self.activation = torch.nn.LeakyReLU(inplace=True)
         self.bns = torch.nn.ModuleList([
             torch.nn.BatchNorm2d(layer_depths[0])
         ])
 
-        # torch.nn.init.kaiming_normal_(self.first_conv.weight,
-        #                               mode='fan_out', nonlinearity='leaky_relu')
-        first_order_initializer(self.first_conv.weight)
+        torch.nn.init.kaiming_normal_(self.first_conv.weight,
+                                      mode='fan_out', nonlinearity='leaky_relu')
+        # first_order_initializer(self.first_conv.weight)
 
     def forward(self, x):
 
@@ -90,7 +90,7 @@ class ResBlock(torch.nn.Module):
             self.conv2.weight, mode='fan_out', nonlinearity='leaky_relu')
         self.bn2 = torch.nn.BatchNorm2d(num_features=out_channels)
 
-        self.relu = torch.nn.PReLU()
+        self.relu = torch.nn.LeakyReLU(inplace=True)
         self.downsample = downsample
         if(downsample is not None):
             self.downsample = torch.nn.Sequential(
@@ -98,6 +98,7 @@ class ResBlock(torch.nn.Module):
                                 kernel_size=1, stride=stride, padding=0),
                 torch.nn.BatchNorm2d(num_features=out_channels)
             )
+            torch.nn.init.kaiming_normal_(self.downsample[0].weight, mode='fan_out', nonlinearity='leaky_relu')
 
     def forward(self, x):
         identity = x

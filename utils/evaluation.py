@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import time
 from utils import anchor_box_iou
 
 class DetectionEvaluator(object):
@@ -9,15 +10,15 @@ class DetectionEvaluator(object):
         self.iou = {}
         self.gt_matches = {}        
         self.dt_matches = {}
-        self.iou_thresholds = torch.arange(0.5,0.95,0.05)
-        self.confidence_thresholds = torch.arange(0.1, 1.0, 0.1)
+        self.iou_thresholds = torch.arange(0.5,0.9,0.1)        
         self.recall_thresholds = torch.arange(0.0,1.0,0.1)
+        self.max_detections = 25
 
     def eval_batch(self, ids, pred_boxes, pred_scores, true_boxes, true_labels):
         '''
         
         '''        
-        for idx, imgId in enumerate(ids):
+        for idx, imgId in enumerate(ids):            
             if pred_scores[idx].shape[0] == 0:
                 continue
             if len(pred_scores[idx].shape) == 1:
@@ -25,16 +26,17 @@ class DetectionEvaluator(object):
 
             # Sort the predictions by score.      
             confs, cats = torch.max(pred_scores[idx], dim=-1)            
-            sorted_inds = torch.argsort(pred_scores[idx].squeeze(-1), descending=True)
+            sorted_inds = torch.argsort(pred_scores[idx].squeeze(-1), descending=True)[:self.max_detections]
             boxes = pred_boxes[idx][sorted_inds]
             confs = confs[sorted_inds]
             cats = cats[sorted_inds]
-            self.predictions[imgId] = {'labels': cats, 'boxes': boxes ,'confidences': confs}
+            self.predictions[imgId] = {'labels': cats.cpu(), 'boxes': boxes.cpu() ,'confidences': confs.cpu()}
             self.iou[imgId] = anchor_box_iou(true_boxes[idx], boxes).cpu()
             
             # Matches contains array of ground truth matches.
             self.gt_matches[imgId] = torch.zeros((len(self.iou_thresholds), true_boxes[idx].shape[0]), dtype=torch.long)
-            self.dt_matches[imgId] = torch.zeros((len(self.iou_thresholds), pred_scores[idx].shape[0]), dtype=torch.long)
+            self.dt_matches[imgId] = torch.zeros((len(self.iou_thresholds), pred_scores[idx].shape[0]), dtype=torch.long)                        
+            
             self.match(imgId)
 
     def match(self, imgId):
@@ -44,7 +46,7 @@ class DetectionEvaluator(object):
         '''
         for iouThreshIdx, iouThresh in enumerate(self.iou_thresholds):
             # Loop over detections - these should be sorted in decreasing confidence
-            # in order to give greedy matching priority
+            # in order to give greedy matching priority            
             for dInd in range(self.iou[imgId].shape[1]):
                 match = -1
                 best_iou = min(iouThresh, 1-1e-10)
@@ -75,14 +77,14 @@ class DetectionEvaluator(object):
         dt_matches = torch.cat([self.dt_matches[imgId] for imgId in imgIds], dim=1)[:, sortedIdx]
         gt_matches = torch.cat([self.gt_matches[imgId] for imgId in imgIds], dim=1)       
         tp_sum = torch.cumsum(dt_matches.to(torch.bool), dim=-1, dtype=torch.float)
-        fp_sum = torch.cumsum(torch.logical_not(dt_matches), dim=-1, dtype=torch.float)    
+        fp_sum = torch.cumsum(torch.logical_not(dt_matches), dim=-1, dtype=torch.float)            
 
         '''
         Loop over the iou thresholds and calculate the tp/fp metrics
         '''
         precision = torch.zeros((len(self.iou_thresholds),len(self.recall_thresholds)))
         scores = torch.zeros((len(self.iou_thresholds),len(self.recall_thresholds)))        
-        recall = torch.zeros_like(self.iou_thresholds)
+        recall = torch.zeros(len(self.iou_thresholds))
         for iouThreshIdx, (tp, fp)  in enumerate(zip(tp_sum, fp_sum)):
             pr = tp / (fp+tp+np.spacing(1))
             rc  = tp / gt_matches.shape[1]    

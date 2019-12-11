@@ -72,19 +72,19 @@ class ClassHead(torch.nn.Module):
                           padding=self.padding, bias=True)]
 
         self.conv = nn.ModuleList(conv)
-        self.relu = torch.nn.ReLU(inplace=True)
+        self.relu = torch.nn.LeakyReLU(inplace=True)
 
         nn.init.kaiming_normal_(
-            self.conv[0].weight, mode='fan_out', nonlinearity='relu')
+            self.conv[0].weight, mode='fan_out', nonlinearity='leaky_relu')
         nn.init.kaiming_normal_(
-            self.conv[1].weight, mode='fan_out', nonlinearity='relu')
+            self.conv[1].weight, mode='fan_out', nonlinearity='leaky_relu')
         nn.init.kaiming_normal_(
-            self.conv[2].weight, mode='fan_out', nonlinearity='relu')
+            self.conv[2].weight, mode='fan_out', nonlinearity='leaky_relu')
         nn.init.constant_(self.conv[-1].bias, last_bias)
 
         self.batch_norm = nn.ModuleList([nn.BatchNorm2d(feature_depth),
                                          nn.BatchNorm2d(feature_depth)]) if batch_norm else None
-        self.num_classes = num_class
+        self.num_classes = num_class        
 
     def forward(self, x):
         '''
