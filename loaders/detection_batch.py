@@ -17,6 +17,7 @@ class ObjectDetectionBatch:
         boxes = [ex["boxes"] for ex in example_list]
         labels = [ex["labels"] for ex in example_list]
         labels_idx = [ex["labels_idx"] for ex in example_list]
+        ids = [ex["id"] for ex in example_list]
 
         out = None
         if(torch.utils.data.get_worker_info() is not None):
@@ -35,6 +36,7 @@ class ObjectDetectionBatch:
         self.labels_idx = torch.nn.utils.rnn.pad_sequence(
             labels_idx, batch_first=True)
         self.images = torch.stack(imgs, dim=0, out=out)
+        self.ids = torch.tensor(ids, dtype=torch.long)
 
         assert(self.boxes.shape[0] ==
                self.images.shape[0] == self.labels.shape[0])

@@ -100,6 +100,7 @@ class FBSDetectionDataset(torch.utils.data.Dataset):
 
 
     def __getitem__(self, idx):
+        example: Example
         example = self.examples[idx]
         file_name = example.FileName().decode('utf-8')
         img = Image.open(os.path.join(self.data_path,
@@ -134,7 +135,8 @@ class FBSDetectionDataset(torch.utils.data.Dataset):
             'labels': self.one_hot_matrix[labels],
             'labels_idx': torch.tensor(labels, dtype=torch.long),
             'width': width,
-            'height': height
+            'height': height,
+            'id': example.Id()
         }
 
         if(self.transforms):
