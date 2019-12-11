@@ -10,6 +10,7 @@ from loaders import ObjectDetectionBatch, collate_detection_samples
 from loaders import DetectionTransform
 from models.detection_model import ObjectDetection
 from utils.image import normalize_tensor
+from utils.evaluation import DetectionEvaluator
 
 
 def train_model(args):
@@ -240,6 +241,7 @@ def train_model(args):
         '''
         print("\nBEGINNING VALIDATION STEP {}\n".format(epoch))
         with torch.no_grad():
+            evaluator = DetectionEvaluator()
             batch: ObjectDetectionBatch
             model.eval()
             for idx, batch in enumerate(validation_loader):
@@ -254,18 +256,25 @@ def train_model(args):
                 '''
                 losses, model_data = model(batch)
 
+                '''
+                Log predictions for evaluation
+                '''
+                evaluator.eval_batch(batch.ids, model_data['postnms_pos_anchors'], model_data['postnms_pos_confidence'],
+                    batch.boxes, batch.labels)
+
                 if idx % args.log_interval == 0:
                     step = (epoch-1)*len(validation_loader)+idx+1
 
-                    print("Ep {} Validation Step {} Batch {}/{} Loss : {:.3f}".format(
+                    print("Ep {} Validation Step {} Batch {}/{}".format(
                         epoch, step, idx, len(
-                            validation_loader), losses["class_loss"].item()
+                            validation_loader)
                     ))
 
                     '''
                     Log Images
                     '''
                     sample_image = normalize_tensor(batch.images[0])
+
                     writer.add_image_with_boxes("validation_images", sample_image,
                                                 box_tensor=batch.boxes[0], global_step=step)
 
@@ -274,15 +283,11 @@ def train_model(args):
 
                     writer.add_image_with_boxes("validation_img_predicted_post_nms", sample_image,
                                                 model_data["postnms_pos_anchors"][0], global_step=step)                   
-                    '''
-                    Log Scalars
-                    '''
-                    writer.add_scalar(
-                        "validation_loss", losses['class_loss'].item(),
-                        global_step=step
-                    )
-                    writer.close()
-
+            '''
+            Accumulate the evaluation
+            '''
+            evaluator.accumulate()
+            
         lr_scheduler.step()
         print("Stepped learning rate. Rate is now: ", lr_scheduler.get_lr())
 
@@ -295,7 +300,7 @@ if __name__ == '__main__':
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--log_interval", type=int, default=10)
     parser.add_argument("--device", type=str, default="cpu")
-    parser.add_argument("--lr", type=float, default=0.01)
+    parser.add_argument("--lr", type=float, default=0.02)
     parser.add_argument("--metric_interval", type=int, default=10)
     parser.add_argument('--resize', nargs='+', type=int, default=(100, 75))
     parser.add_argument('--neg_anchor_iou', type=float, default=0.4)
