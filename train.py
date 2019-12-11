@@ -272,12 +272,8 @@ def train_model(args):
                     writer.add_image_with_boxes("validation_img_predicted_anchors", sample_image,
                                                 model_data["pos_predicted_anchors"][0], global_step=step)
 
-                    keep_ind = nms(model_data["pos_predicted_anchors"][0],
-                                   model_data["pos_predicted_confidence"][0], iou_threshold=0.5)
-
                     writer.add_image_with_boxes("validation_img_predicted_post_nms", sample_image,
-                                                model_data["pos_predicted_anchors"][0][keep_ind], global_step=step)
-
+                                                model_data["postnms_pos_anchors"][0], global_step=step)                   
                     '''
                     Log Scalars
                     '''

@@ -27,6 +27,7 @@ class ObjectDetection(torch.nn.Module):
                  pos_threshold=0.5,
                  neg_threshold=0.1,
                  predict_conf_threshold=0.75,
+                 nms_iou_threshold=0.5,
                  **kwargs):
 
         super(ObjectDetection, self).__init__(**kwargs)
@@ -35,6 +36,7 @@ class ObjectDetection(torch.nn.Module):
         self.predict_conf_threshold = predict_conf_threshold
         self.num_classes = num_classes
         self.input_image_shape = input_image_shape
+        self.nms_iou_threshold = nms_iou_threshold
 
         # The feature counts / depth for each feature map considered
         # for the class regression head
@@ -44,8 +46,7 @@ class ObjectDetection(torch.nn.Module):
         # The anchors sizes need to scale to cover the sizes of possible objects
         # in the dataset.
         # You can either set an absolute pixel value, or set based off size of image.
-        width = input_image_shape[-1]
-        self.ANCHOR_SIZES = ((40, 45, 50, 55, 60, 65, 70,75),)
+        self.ANCHOR_SIZES = ((40, 45, 50, 55, 60, 65, 70, 75),)
 
         # These ratios are for all anchors
         self.ANCHOR_RATIOS = (1.0, 2.0, 0.5)
@@ -159,7 +160,8 @@ class ObjectDetection(torch.nn.Module):
 
         losses = {
             'class_loss': class_loss_reduced
-        }
+        } if self.training else {}
+
 
         data = {
             'pos_predicted_anchors': [anchors[mask] for mask in pos_predicted_mask],
@@ -169,5 +171,16 @@ class ObjectDetection(torch.nn.Module):
             'pos_labeled_confidence': positive_anchor_confidences,
             'feature_maps': bb_maps
         }
+
+        '''
+        Perform NMS (eval only)
+        '''
+        if not self.training:
+            data['postnms_pos_confidence'] = []
+            data['postnms_pos_anchors'] = []
+            for idx, (box_set, score_set) in enumerate(zip(data['pos_predicted_anchors'], data['pos_predicted_confidence'])):
+                keep_ind = torchvision.ops.nms(box_set, score_set, self.nms_iou_threshold)        
+                data['postnms_pos_anchors'].append(box_set[keep_ind])
+                data['postnms_pos_confidence'].append(score_set[keep_ind])            
 
         return losses, data
