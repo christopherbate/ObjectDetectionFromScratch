@@ -1,4 +1,5 @@
 import torch
+import torchvision
 import numpy as np
 from loaders import ObjectDetectionBatch
 from utils import boxes as boxops
