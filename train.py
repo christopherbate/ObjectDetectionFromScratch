@@ -25,7 +25,7 @@ def train_model(args):
         greyscale=True,
         transforms=transforms,
         categories_filter=["person"],
-        area_filter=[200**2, 400**2]
+        area_filter=[200**2, 300**2]
     )
     dataset.print_categories()
 
@@ -69,7 +69,8 @@ def train_model(args):
         pos_threshold=args.pos_anchor_iou,
         neg_threshold=args.neg_anchor_iou,
         num_classes=len(dataset.categories),
-        predict_conf_threshold=args.filter_conf
+        predict_conf_threshold=args.filter_conf,
+        nms_iou_threshold=args.nms_iou
     ).to(device)
 
     '''
@@ -107,6 +108,7 @@ def train_model(args):
         batch: ObjectDetectionBatch
         model.train()
         for idx, batch in enumerate(loader):
+            batch_start = time.time()
             '''
             Reset gradient
             '''
@@ -116,7 +118,7 @@ def train_model(args):
             Push the data to the gpu (if necessary)
             '''
             batch.to(device)
-            batch.debug = True if idx % args.log_interval == 0 else False
+            batch.debug = False if idx % args.log_interval == 0 else False
 
             '''
             Run the model
@@ -129,15 +131,17 @@ def train_model(args):
             '''
             losses['class_loss'].backward()
             optim.step()
+            
 
             '''
             Log Metrics and Visualizations
             '''
+            batch_end = time.time()
             if (idx) % args.log_interval == 0:
                 step = (epoch-1)*len(loader)+idx+1
 
-                print("Ep {} Training Step {} Batch {}/{} Loss : {:.3f}".format(
-                    epoch, step, idx, len(loader), cummulative_loss
+                print("Ep {} Training Step {} Batch {}/{} Loss : {:.3f}, {:.3f} seconds".format(
+                    epoch, step, idx+1, len(loader), cummulative_loss, (batch_end-batch_start)
                 ))
 
                 '''
@@ -162,11 +166,8 @@ def train_model(args):
                 writer.add_image_with_boxes("training_image_predicted_anchors", sample_image,
                                             model_data["pos_predicted_anchors"][0], global_step=step)
 
-                keep_ind = nms(model_data["pos_predicted_anchors"][0],
-                               model_data["pos_predicted_confidence"][0], iou_threshold=args.nms_iou)
-
-                writer.add_image_with_boxes("training_image_predicted_post_nms", sample_image,
-                                            model_data["pos_predicted_anchors"][0][keep_ind], global_step=step)
+                # writer.add_image_with_boxes("training_image_predicted_post_nms", sample_image,
+                #                             model_data["postnms_pos_anchors"][0], global_step=step)
                 writer.add_image_with_boxes("training_image_positive_anchors", sample_image,
                                             box_tensor=model_data["pos_labeled_anchors"][0], global_step=step)
 
@@ -245,6 +246,7 @@ def train_model(args):
             batch: ObjectDetectionBatch
             model.eval()
             for idx, batch in enumerate(validation_loader):
+                batch_start = time.time()
                 '''
                 Push the data to the gpu (if necessary)
                 '''
@@ -259,15 +261,17 @@ def train_model(args):
                 '''
                 Log predictions for evaluation
                 '''
-                evaluator.eval_batch(batch.ids, model_data['postnms_pos_anchors'], model_data['postnms_pos_confidence'],
-                    batch.boxes, batch.labels)
+                if epoch % 10 == 0:
+                    evaluator.eval_batch(batch.ids, model_data['postnms_pos_anchors'], model_data['postnms_pos_confidence'],
+                        batch.boxes, batch.labels)
 
-                if idx % args.log_interval == 0:
+                batch_end = time.time()
+
+                if idx % args.valid_log_interval == 0:
                     step = (epoch-1)*len(validation_loader)+idx+1
 
-                    print("Ep {} Validation Step {} Batch {}/{}".format(
-                        epoch, step, idx, len(
-                            validation_loader)
+                    print("Ep {} Validation Step {} Batch {}/{} {:.3f}, seconds".format(
+                        epoch, step, idx+1, len(validation_loader), (batch_end-batch_start)
                     ))
 
                     '''
@@ -285,8 +289,9 @@ def train_model(args):
                                                 model_data["postnms_pos_anchors"][0], global_step=step)                   
             '''
             Accumulate the evaluation
-            '''
-            evaluator.accumulate()
+            '''            
+            if epoch %10 == 0:
+                evaluator.accumulate()
             
         lr_scheduler.step()
         print("Stepped learning rate. Rate is now: ", lr_scheduler.get_lr())
@@ -299,6 +304,7 @@ if __name__ == '__main__':
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--log_interval", type=int, default=10)
+    parser.add_argument("--valid_log_interval", type=int, default=1)
     parser.add_argument("--device", type=str, default="cpu")
     parser.add_argument("--lr", type=float, default=0.02)
     parser.add_argument("--metric_interval", type=int, default=10)
@@ -310,6 +316,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_data_workers', type=int,
                         default=torch.get_num_threads())
     parser.add_argument('--filter_conf',  type=float, default=0.5)
+    parser.add_argument('--validation', type=int, default=20)
     args = parser.parse_args()
 
     # Turn the resize parameter into the reverse (WH -> HW)
