@@ -69,6 +69,10 @@ class DetectionEvaluator(object):
                 self.dt_matches[imgId][iouThreshIdx, dInd] = gInd
 
     def accumulate(self):
+        '''
+        Returns:
+            precision - torch tensor of size (len(iou thresholds, len recall thresholds))
+        '''
         imgIds = list(self.iou.keys())
         image_metrics = []
         dt_scores = torch.cat([self.predictions[imgId]["confidences"] for imgId in imgIds], dim=0)        
