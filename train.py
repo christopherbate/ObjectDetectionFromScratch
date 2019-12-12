@@ -131,7 +131,6 @@ def train_model(args):
             '''
             losses['class_loss'].backward()
             optim.step()
-            
 
             '''
             Log Metrics and Visualizations
@@ -141,7 +140,8 @@ def train_model(args):
                 step = (epoch-1)*len(loader)+idx+1
 
                 print("Ep {} Training Step {} Batch {}/{} Loss : {:.3f}, {:.3f} seconds".format(
-                    epoch, step, idx+1, len(loader), cummulative_loss, (batch_end-batch_start)
+                    epoch, step, idx +
+                    1, len(loader), cummulative_loss, (batch_end-batch_start)
                 ))
 
                 '''
@@ -263,7 +263,7 @@ def train_model(args):
                 '''
                 if epoch % 10 == 0:
                     evaluator.eval_batch(batch.ids, model_data['postnms_pos_anchors'], model_data['postnms_pos_confidence'],
-                        batch.boxes, batch.labels)
+                                         batch.boxes, batch.labels)
 
                 batch_end = time.time()
 
@@ -271,7 +271,8 @@ def train_model(args):
                     step = (epoch-1)*len(validation_loader)+idx+1
 
                     print("Ep {} Validation Step {} Batch {}/{} {:.3f}, seconds".format(
-                        epoch, step, idx+1, len(validation_loader), (batch_end-batch_start)
+                        epoch, step, idx +
+                        1, len(validation_loader), (batch_end-batch_start)
                     ))
 
                     '''
@@ -286,13 +287,24 @@ def train_model(args):
                                                 model_data["pos_predicted_anchors"][0], global_step=step)
 
                     writer.add_image_with_boxes("validation_img_predicted_post_nms", sample_image,
-                                                model_data["postnms_pos_anchors"][0], global_step=step)                   
+                                                model_data["postnms_pos_anchors"][0], global_step=step)
+                    writer.close()
             '''
             Accumulate the evaluation
-            '''            
-            if epoch %10 == 0:
-                evaluator.accumulate()
-            
+            '''
+            if epoch % args.validation == 0:
+                try:
+                    precision, _, _ = evaluator.accumulate()
+                    recall_thresholds = evaluator.recall_thresholds
+
+                    precision_kv = {r: p for r, p in zip(
+                        recall_thresholds, precision.mean(dim=0))}
+                    writer.add_scalars("Validation mAP",
+                                    precision_kv, global_step=epoch)
+                except Exception as e:
+                    print("Could not calculate validation metrics.")
+                    print(e)
+
         lr_scheduler.step()
         print("Stepped learning rate. Rate is now: ", lr_scheduler.get_lr())
 
@@ -316,7 +328,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_data_workers', type=int,
                         default=torch.get_num_threads())
     parser.add_argument('--filter_conf',  type=float, default=0.5)
-    parser.add_argument('--validation', type=int, default=20)
+    parser.add_argument('--validation', type=int, default=2)
     args = parser.parse_args()
 
     # Turn the resize parameter into the reverse (WH -> HW)
