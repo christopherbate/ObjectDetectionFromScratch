@@ -61,13 +61,7 @@ class RandomResizeCropSample(object):
         img: PIL image
         '''
 
-        new_sample = sample
-
-        # new_sample['boxes'] = sample['boxes']
-        # new_sample['labels'] = sample['labels']
-        # new_sample['labels_idx'] = sample['labels_idx']
-
-        # i, j, h, w = self.get_params(sample['image'], self.scale, self.ratio)
+        new_sample = sample    
         i, j, h, w = 0, 0, sample['image'].height, sample['image'].width
 
         # Crop the image
