@@ -5,7 +5,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision.ops import nms
 import torchvision
 
-from loaders import FBSDetectionDataset
+from loaders import DetectionLoader
 from loaders import ObjectDetectionBatch, collate_detection_samples
 from loaders import DetectionTransform
 from models.detection_model import ObjectDetection
@@ -19,15 +19,14 @@ def train_model(args):
     transforms = DetectionTransform(output_size=args.resize,
                                     greyscale=True, normalize=True)
 
-    dataset = FBSDetectionDataset(
-        database_path=args.db,
+    dataset = DetectionLoader(
+        db_path=args.db,
         data_path=args.images,
         greyscale=True,
         transforms=transforms,
-        categories_filter=["person"],
-        area_filter=[200**2, 300**2]
+        categories_filter=None,
+        area_filter=[0, 1000000]
     )
-    dataset.print_categories()
 
     ''' 
     Split dataset into train and validation
@@ -77,18 +76,18 @@ def train_model(args):
     Select optimizer
     '''
     optim = torch.optim.Adam(params=model.parameters(),
-                             weight_decay=args.weight_decay)
+                            weight_decay=args.weight_decay)                            
 
     def lr_schedule(epoch):
-        if(epoch >= 60):
-            return 0.01
-        if epoch >= 20:
-            return 0.1
-        if epoch >= 5:
-            return 1
-        if epoch >= 1:
-            return 0.1
-        return 0.1
+        # if(epoch >= 60):
+            # return 0.01
+        # if epoch >= 20:
+            # return 0.1
+        # if epoch >= 5:
+            # return 1
+        # if epoch >= 1:
+            # return 0.1
+        return 1
 
     lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
         optim, lr_lambda=[lr_schedule])
@@ -118,7 +117,7 @@ def train_model(args):
             Push the data to the gpu (if necessary)
             '''
             batch.to(device)
-            batch.debug = False if idx % args.log_interval == 0 else False
+            batch.debug = True if idx % args.log_interval == 0 else False
 
             '''
             Run the model
@@ -165,9 +164,7 @@ def train_model(args):
                                             box_tensor=batch.boxes[0], global_step=step)
                 writer.add_image_with_boxes("training_image_predicted_anchors", sample_image,
                                             model_data["pos_predicted_anchors"][0], global_step=step)
-
-                # writer.add_image_with_boxes("training_image_predicted_post_nms", sample_image,
-                #                             model_data["postnms_pos_anchors"][0], global_step=step)
+         
                 writer.add_image_with_boxes("training_image_positive_anchors", sample_image,
                                             box_tensor=model_data["pos_labeled_anchors"][0], global_step=step)
 
@@ -261,7 +258,7 @@ def train_model(args):
                 '''
                 Log predictions for evaluation
                 '''
-                if epoch % 10 == 0:
+                if epoch % args.validation == 0:
                     evaluator.eval_batch(batch.ids, model_data['postnms_pos_anchors'], model_data['postnms_pos_confidence'],
                                          batch.boxes, batch.labels)
 
@@ -295,12 +292,7 @@ def train_model(args):
             if epoch % args.validation == 0:
                 try:
                     precision, _, _ = evaluator.accumulate()
-                    recall_thresholds = evaluator.recall_thresholds
-
-                    precision_kv = {r: p for r, p in zip(
-                        recall_thresholds, precision.mean(dim=0))}
-                    writer.add_scalars("Validation mAP",
-                                    precision_kv, global_step=epoch)
+                    writer.add_scalar("Validation mAP", precision[:,0].mean(), global_step=epoch)
                 except Exception as e:
                     print("Could not calculate validation metrics.")
                     print(e)

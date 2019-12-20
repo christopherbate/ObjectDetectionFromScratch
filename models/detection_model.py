@@ -47,7 +47,7 @@ class ObjectDetection(torch.nn.Module):
         # The anchors sizes need to scale to cover the sizes of possible objects
         # in the dataset.
         # You can either set an absolute pixel value, or set based off size of image.
-        self.ANCHOR_SIZES = ((40, 45, 50, 55, 60, 65, 70, 75),)
+        self.ANCHOR_SIZES = ((5, 10, 15, 20, 25, 30, 35, 40, 45,),)
 
         # These ratios are for all anchors
         self.ANCHOR_RATIOS = (1.0, 2.0, 0.5)
@@ -60,7 +60,7 @@ class ObjectDetection(torch.nn.Module):
                                             feature_depth=128,
                                             num_class=num_classes,
                                             batch_norm=True,
-                                            last_bias=-9.0,
+                                            last_bias=-4.5,
                                             num_anchors=[len(anchors)*len(self.ANCHOR_RATIOS) for anchors in self.ANCHOR_SIZES])
 
         self.loss = torch.nn.BCEWithLogitsLoss(reduce=False)
@@ -163,7 +163,6 @@ class ObjectDetection(torch.nn.Module):
             'class_loss': class_loss_reduced
         } if self.training else {}
 
-
         data = {
             'pos_predicted_anchors': [anchors[mask] for mask in pos_predicted_mask],
             'pos_predicted_confidence': [pos_predicted_conf[idx, mask] for idx, mask in enumerate(pos_predicted_mask)],
@@ -180,8 +179,9 @@ class ObjectDetection(torch.nn.Module):
             data['postnms_pos_confidence'] = []
             data['postnms_pos_anchors'] = []
             for idx, (box_set, score_set) in enumerate(zip(data['pos_predicted_anchors'], data['pos_predicted_confidence'])):
-                keep_ind = torchvision.ops.nms(box_set, score_set, self.nms_iou_threshold)        
+                keep_ind = torchvision.ops.nms(
+                    box_set, score_set, self.nms_iou_threshold)
                 data['postnms_pos_anchors'].append(box_set[keep_ind])
-                data['postnms_pos_confidence'].append(score_set[keep_ind])            
+                data['postnms_pos_confidence'].append(score_set[keep_ind])
 
         return losses, data
