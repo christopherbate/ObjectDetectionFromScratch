@@ -24,27 +24,35 @@ class DetectionLoader(torch.utils.data.Dataset):
         self.categories = {}
         self.transforms = transforms
         self.data_path = data_path
-        self.area_limits = area_filter
+        self.area_limits = area_filter if area_filter is not None else [
+            0, 1000**2]
         self.category_filter = {
             c: True for c in categories_filter
-        } if categories_filter is not None else {}
+        } if categories_filter is not None else None
         self.examples = []
         self.class_strings = []
 
         startTime = time.time()
         print("Selecting examples from database.")
         with sqlite3.connect(self.db_path) as conn:
-            for row in conn.execute("select id, name, coco_id from categories order by coco_id"):
-                self.categories[row[2]] = {
-                    "name": row[1],
-                    "id": row[0],
-                    "coco_id": row[2]
-                }
-                self.class_strings.append(row[1])
+            for idx, row in enumerate(conn.execute("select id, name, coco_id from categories order by coco_id")):
+                if self.category_filter is None or row[1] in self.category_filter:
+                    self.categories[row[2]] = {
+                        "name": row[1],
+                        "id": idx,
+                        "coco_id": row[2]
+                    }
+                    self.class_strings.append(row[1])
 
+            print("Categories")
+            allowed_categories = list(self.categories.keys())
+            allowed_categories = "("+",".join([str(cid)
+                                               for cid in allowed_categories])+")"
+            print("Allowed categories: ", allowed_categories)
             for row in conn.execute("select filename, coco_id, width, height, area from images"):
                 anns = conn.execute(
-                    "select box, cat_coco_id from annotations where image_coco_id = (?) and is_crowd = 0 and cat_coco_id = 1 and area > ? and area < ?",
+                    "select box, cat_coco_id from annotations where image_coco_id = (?) and is_crowd = 0 and area > ? and area < ? and cat_coco_id in {}".format(
+                        allowed_categories),
                     (row[1], self.area_limits[0], self.area_limits[1])).fetchall()
                 boxes = [[float(fStr) for fStr in a[0].split(',')]
                          for a in anns]
